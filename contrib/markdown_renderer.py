@@ -21,18 +21,29 @@ class MarkdownRenderer(BaseRenderer):
     def __init__(self, *extras):
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine), extras))
         self.render_map['SetextHeading'] = self.render_setext_heading
+        self.indentation = ""
+        self.line_break_emitted = False
+
+    def indent(self):
+        if self.line_break_emitted:
+            self.line_break_emitted = False
+            return self.indentation
+        else:
+            return ""
+
+    # span/inline tokens
 
     def render_strong(self, token: span_token.Strong) -> str:
-        return "".join([token.tag * 2, self.render_inner(token), token.tag * 2])
+        return "".join((self.indent(), token.tag * 2, self.render_inner(token), token.tag * 2))
 
     def render_emphasis(self, token: span_token.Emphasis) -> str:
-        return "".join([token.tag, self.render_inner(token), token.tag])
+        return "".join((self.indent(), token.tag, self.render_inner(token), token.tag))
 
     def render_inline_code(self, token: span_token.InlineCode) -> str:
-        return "".join(['`', self.render_inner(token), '`'])
+        return "".join((self.indent(), '`', self.render_inner(token), '`'))
 
     def render_strikethrough(self, token: span_token.Strikethrough) -> str:
-        return "".join(['~~', self.render_inner(token), '~~'])
+        return "".join((self.indent(), '~~', self.render_inner(token), '~~'))
 
     def render_image(self, token: span_token.Image) -> str:
         return self.render_image_or_link(token, '!', token.src)
@@ -44,40 +55,61 @@ class MarkdownRenderer(BaseRenderer):
         if len(token.title) > 0:
             opener = token.title_tag
             closer = ')' if token.title_tag == '(' else token.title_tag
-            return "{}[{}]({} {}{}{})".format(prefix, self.render_inner(token), target, opener, token.title, closer)
+            return "{}{}[{}]({} {}{}{})".format(self.indent(), prefix, self.render_inner(token), target, opener, token.title, closer)
         else:
-            return "{}[{}]({})".format(prefix, self.render_inner(token), target)
+            return "{}{}[{}]({})".format(self.indent(), prefix, self.render_inner(token), target)
 
     def render_auto_link(self, token: span_token.AutoLink) -> str:
-        return "<{}>".format(self.render_inner(token))
+        return "".join((self.indent(), "<", self.render_inner(token), ">"))
 
     def render_escape_sequence(self, token: span_token.EscapeSequence) -> str:
-        return "\\" + self.render_inner(token)
+        return "".join((self.indent(), "\\", self.render_inner(token)))
 
     def render_line_break(self, token: span_token.LineBreak) -> str:
-        return token.tag + "\n"
+        content = "".join((self.indent(), token.tag, "\n"))
+        self.line_break_emitted = True
+        return content
+
+    def render_html_span(self, token: span_token.HTMLSpan) -> str:
+        return "".join((self.indent(), token.content))
+
+    # block tokens
 
     def render_heading(self, token: block_token.Heading) -> str:
-        return "".join(["#" * token.level, " ", self.render_inner(token), " ", "#" * token.level, "\n"])
+        content = "".join((self.indent(), "#" * token.level, " ", self.render_inner(token), " ", "#" * token.level, "\n"))
+        self.line_break_emitted = True
+        return content
 
     def render_setext_heading(self, token: block_token.SetextHeading) -> str:
         char = "=" if token.level == 1 else "-"
-        return self.render_inner(token) + "\n" + char * token.tag_length + "\n"
+        content = "".join((self.indent(), self.render_inner(token), "\n", char * token.tag_length, "\n"))
+        self.line_break_emitted = True
+        return content
 
     # def render_quote(self, token: block_token.Quote) -> str:
     #     return self.render_inner(token)
 
     def render_paragraph(self, token: block_token.Paragraph) -> str:
-        return self.render_inner(token) + "\n"
+        content = "".join((self.indent(), self.render_inner(token), "\n"))
+        self.line_break_emitted = True
+        return content
 
     # def render_block_code(self, token: block_token.BlockCode) -> str:
     #     return self.render_inner(token)
 
-    # def render_list(self, token: block_token.List) -> str:
-    #     return self.render_inner(token)
+    def render_list(self, token: block_token.List) -> str:
+        # self.current_list_token = token
+        # self.current_list_leader_length = max((len(list_item.leader) for list_item in token.children))
+        return self.render_inner(token)
 
-    # def render_list_item(self, token: block_token.ListItem) -> str:
-    #     return self.render_inner(token)
+    def render_list_item(self, token: block_token.ListItem) -> str:
+        prefix = "".join((self.indent(), token.leader, " "))
+        prev_indentation = self.indentation
+        self.indentation += " " * (len(token.leader) + 1)
+        content = "".join((prefix, self.render_inner(token), "\n" if not self.line_break_emitted else ""))
+        self.indentation = prev_indentation
+        self.line_break_emitted = True
+        return content
 
     # def render_table(self, token: block_token.Table) -> str:
     #     return self.render_inner(token)
@@ -89,13 +121,15 @@ class MarkdownRenderer(BaseRenderer):
     #     return self.render_inner(token)
 
     def render_thematic_break(self, token: block_token.ThematicBreak) -> str:
-        return token.tag
+        content = "".join((self.indent(), token.tag)) # token.tag includes the newline
+        self.line_break_emitted = True
+        return content
 
     def render_html_block(self, token: block_token.HTMLBlock) -> str:
-        return token.content
-
-    def render_html_span(self, token: span_token.HTMLSpan) -> str:
-        return token.content
+        content = "".join((self.indent(), token.content))
+        self.line_break_emitted = True
+        return content
 
     def render_blank_line(self, token: BlankLine) -> str:
-        return "\n"
+        self.blank_line_emitted = True
+        return "\n" # blank lines should not be indented

@@ -52,7 +52,7 @@ that's all
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, input)
 
-    def test_block_tokens(self):
+    def test_thematic_break_and_headings(self):
         input = \
 """ **  * ** * ** * **
 ## atx *heading* ##
@@ -64,6 +64,27 @@ heading!
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, input)
+
+    def test_list(self):
+        input = \
+"""
+  22)  *yeah*
+  96)
+ 128) here begins a nested list.
+       + apples
+       +  bananas
+"""
+        expected = \
+"""
+22) *yeah*
+96) 
+128) here begins a nested list.
+     + apples
+     + bananas
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, expected)
 
     def test_roundtrip_readme(self):
         with open('README.md', 'r') as file:
