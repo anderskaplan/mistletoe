@@ -86,6 +86,25 @@ heading!
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, expected)
 
+    def test_code_blocks(self):
+        input = \
+"""
+    this is an indented code block
+      on two lines 
+    with some extra whitespace here and there, to be preserved  
+      just as it is.
+```
+now for a fenced code block 
+  where indentation is also preserved. as are the double spaces at the end of this line:  
+```
+~~~ this is an info string: behold the fenced code block with tildes!
+*tildes are great*
+~~~
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, input)
+
     def test_roundtrip_readme(self):
         with open('README.md', 'r') as file:
             lines = file.readlines()

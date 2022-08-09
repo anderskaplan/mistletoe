@@ -20,7 +20,8 @@ class BlankLine(block_token.BlockToken):
 class MarkdownRenderer(BaseRenderer):
     def __init__(self, *extras):
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine), extras))
-        self.render_map['SetextHeading'] = self.render_setext_heading
+        self.render_map["SetextHeading"] = self.render_setext_heading
+        self.render_map["CodeFence"] = self.render_fenced_code_block
         self.indentation = ""
         self.line_break_emitted = False
 
@@ -94,12 +95,13 @@ class MarkdownRenderer(BaseRenderer):
         self.line_break_emitted = True
         return content
 
-    # def render_block_code(self, token: block_token.BlockCode) -> str:
-    #     return self.render_inner(token)
+    def render_block_code(self, token: block_token.BlockCode) -> str:
+        return self.render_inner(token)
+
+    def render_fenced_code_block(self, token: block_token.BlockCode) -> str:
+        return self.render_inner(token)
 
     def render_list(self, token: block_token.List) -> str:
-        # self.current_list_token = token
-        # self.current_list_leader_length = max((len(list_item.leader) for list_item in token.children))
         return self.render_inner(token)
 
     def render_list_item(self, token: block_token.ListItem) -> str:
@@ -107,8 +109,8 @@ class MarkdownRenderer(BaseRenderer):
         prev_indentation = self.indentation
         self.indentation += " " * (len(token.leader) + 1)
         content = "".join((prefix, self.render_inner(token), "\n" if not self.line_break_emitted else ""))
-        self.indentation = prev_indentation
         self.line_break_emitted = True
+        self.indentation = prev_indentation
         return content
 
     # def render_table(self, token: block_token.Table) -> str:
