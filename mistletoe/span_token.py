@@ -103,6 +103,8 @@ class Strong(SpanToken):
     This is an inline token. Its children are inline (span) tokens.
     One of the core tokens.
     """
+    def __init__(self, match):
+        self.tag = match.tag
 
 
 class Emphasis(SpanToken):
@@ -111,6 +113,8 @@ class Emphasis(SpanToken):
     This is an inline token. Its children are inline (span) tokens.
     One of the core tokens.
     """
+    def __init__(self, match):
+        self.tag = match.tag
 
 
 class InlineCode(SpanToken):
@@ -170,6 +174,7 @@ class Link(SpanToken):
     def __init__(self, match):
         self.target = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
+        self.title_tag = getattr(match, "title_tag", None)
 
 
 class AutoLink(SpanToken):
@@ -226,6 +231,7 @@ class LineBreak(SpanToken):
         content = match.group(1)
         self.soft = not content.startswith(('  ', '\\'))
         self.content = ''
+        self.tag = content
 
 
 class RawText(SpanToken):

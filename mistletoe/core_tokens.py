@@ -112,6 +112,7 @@ def process_emphasis(string, stack_bottom, delimiters, matches):
             end = closer.start + n
             match = MatchObj(start, end, (start+n, end-n, string[start+n:end-n]))
             match.type = 'Strong' if n == 2 else 'Emphasis'
+            match.tag = string[start]
             matches.append(match)
             # remove all delimiters in between
             del delimiters[open_pos+1:curr_pos]
@@ -164,6 +165,8 @@ def match_link_image(string, offset, delimiter, root=None):
                                       (dest_start, dest_end, dest),
                                       (title_start, title_end, title))
                     match.type = 'Link' if not image else 'Image'
+                    if title_start < title_end:
+                        match.title_tag = string[title_start]
                     return match
     # footnote link
     if follows(string, offset, '['):
