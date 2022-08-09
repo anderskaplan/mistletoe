@@ -20,6 +20,7 @@ class BlankLine(block_token.BlockToken):
 class MarkdownRenderer(BaseRenderer):
     def __init__(self, *extras):
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine), extras))
+        self.render_map['SetextHeading'] = self.render_setext_heading
 
     def render_strong(self, token: span_token.Strong) -> str:
         return "".join([token.tag * 2, self.render_inner(token), token.tag * 2])
@@ -56,8 +57,12 @@ class MarkdownRenderer(BaseRenderer):
     def render_line_break(self, token: span_token.LineBreak) -> str:
         return token.tag + "\n"
 
-    # def render_heading(self, token: block_token.Heading) -> str:
-    #     return self.render_inner(token)
+    def render_heading(self, token: block_token.Heading) -> str:
+        return "".join(["#" * token.level, " ", self.render_inner(token), " ", "#" * token.level, "\n"])
+
+    def render_setext_heading(self, token: block_token.SetextHeading) -> str:
+        char = "=" if token.level == 1 else "-"
+        return self.render_inner(token) + "\n" + char * token.tag_length + "\n"
 
     # def render_quote(self, token: block_token.Quote) -> str:
     #     return self.render_inner(token)
@@ -83,8 +88,8 @@ class MarkdownRenderer(BaseRenderer):
     # def render_table_row(self, token: block_token.TableRow) -> str:
     #     return self.render_inner(token)
 
-    # def render_thematic_break(self, token: block_token.ThematicBreak) -> str:
-    #     return self.render_inner(token)
+    def render_thematic_break(self, token: block_token.ThematicBreak) -> str:
+        return token.tag
 
     def render_html_block(self, token: block_token.HTMLBlock) -> str:
         return token.content

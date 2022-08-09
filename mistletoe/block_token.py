@@ -194,7 +194,9 @@ class SetextHeading(BlockToken):
     """
     repr_attributes = ("level",)
     def __init__(self, lines):
-        self.level = 1 if lines.pop().lstrip().startswith('=') else 2
+        underline = lines.pop().strip()
+        self.level = 1 if underline.startswith('=') else 2
+        self.tag_length = len(underline)
         content = '\n'.join([line.strip() for line in lines])
         super().__init__(content, span_token.tokenize_inner)
 
@@ -906,8 +908,8 @@ class ThematicBreak(BlockToken):
     This is a leaf block token without children.
     """
     pattern = re.compile(r' {0,3}(?:([-_*])\s*?)(?:\1\s*?){2,}$')
-    def __init__(self, _):
-        pass
+    def __init__(self, lines):
+        self.tag = lines[0]
 
     @classmethod
     def start(cls, line):
