@@ -11,7 +11,13 @@ class TestMarkdownRenderer(TestCase):
             rendered = renderer.render(Document(input))
             return rendered
 
+    def test_empty_document(self):
+        input = []
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
     def test_paragraphs_and_blank_lines(self):
+        # a line break is always added at the end of a paragraph.
         input = ['Paragraph 1. Single line. Followed by two white-space-only lines.\n',
                  '\n',
                  '\n',
@@ -20,7 +26,7 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input) + "\n")
 
-    def test_line_breaks(self):
+    def test_soft_and_hard_line_breaks(self):
         input = ['soft line break\n',
                  'hard line break\\\n',
                  'another hard line break  \n',
@@ -28,8 +34,13 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_span_tokens(self):
-        input = ['_**emphasized and strong**_  \\*escaped\\*  `code span` ~~strikethrough~~ <h1>\n']
+    def test_emphasized_strong_and_strikethrough(self):
+        input = ['_**emphasized and strong**_  ~~strikethrough~~\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_escaped_chars_code_span_and_html_span(self):
+        input = ['here goes:  \\*escaped, not emphasized\\*  `code span` <h1>\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
@@ -42,9 +53,14 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_thematic_break_and_headings(self):
+    def test_thematic_break(self):
         input = [' **  * ** * ** * **\n',
-                 '## atx *heading* ##\n',
+                 'and some text\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_headings(self):
+        input = ['## atx *heading* ##\n',
                  '# another atx heading, without ending hashes\n',
                  '\n',
                  'setext\n',
@@ -95,10 +111,10 @@ class TestMarkdownRenderer(TestCase):
         self.assertEqual(rendered, "".join(input))
 
     def test_html_block(self):
-        input = ['<h1>mistletoe<img src=\'https://cdn.rawgit.com/miyuchina/mistletoe/master/resources/logo.svg\' align=\'right\' width=\'128\' height=\'128\'></h1>\n',
+        input = ['<h1>mistletoe<img src=\'https://cdn.rawgit.com/\' align=\'right\'></h1>\n',
                  '<br>\n',
                  '\n',
-                 '+ <h1>mistletoe<img src=\'https://cdn.rawgit.com/miyuchina/mistletoe/master/resources/logo.svg\' align=\'right\' width=\'128\' height=\'128\'></h1>\n',
+                 '+ <h1>mistletoe<img src=\'https://cdn.rawgit.com/\' align=\'right\'></h1>\n',
                  '  <br>\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
@@ -121,11 +137,3 @@ class TestMarkdownRenderer(TestCase):
                  '[t]: https://foo (title)\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
-
-    def test_roundtrip_readme(self):
-        with open('README.md', 'r', encoding='utf-8') as file:
-            input = file.readlines()
-        rendered = self.roundtrip(input)
-        with open('roundtrip.md', 'w', encoding='utf-8') as outf:
-            outf.write(rendered)
-        self.assertEqual("".join(input), rendered)

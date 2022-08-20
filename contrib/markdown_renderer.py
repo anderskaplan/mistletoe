@@ -5,8 +5,10 @@ This renderer is designed to make as "clean" a roundtrip as possible, markdown -
 except for nonessential whitespace.
 """
 
+import os
 import re
 from itertools import chain
+import sys
 
 from mistletoe import block_token, span_token
 from mistletoe.base_renderer import BaseRenderer
@@ -249,3 +251,22 @@ class MarkdownRenderer(BaseRenderer):
     def render_blank_line(self, token: BlankLine) -> str:
         self.blank_line_emitted = True
         return "\n" # blank lines should not be indented
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: {} <input file name> <output file name>".format(os.path.basename(__file__)))
+        print("Parses the input markdown file and writes the output markdown file.")
+        return -1
+
+    with open(sys.argv[1], 'r', encoding='utf-8') as file:
+        input = file.readlines()
+    with MarkdownRenderer() as renderer:
+        rendered = renderer.render(block_token.Document(input))
+    with open(sys.argv[2], 'w', encoding='utf-8') as outf:
+        outf.write(rendered)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
