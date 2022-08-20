@@ -416,14 +416,14 @@ class CodeFence(BlockToken):
         language (str): language of code block (default to empty).
     """
     repr_attributes = ("language",)
-    pattern = re.compile(r'( {0,3})(`{3,}|~{3,}) *(\S*)([^\n]*)')
+    pattern = re.compile(r'( {0,3})(`{3,}|~{3,})( *(\S*)[^\n]*)')
     _open_info = None
     def __init__(self, match):
         lines, open_info = match
         self.indentation = open_info[0]
         self.tag = open_info[1]
-        self.language = span_token.EscapeSequence.strip(open_info[2])
-        self.info_string = open_info[2] + open_info[3]
+        self.info_string = open_info[2]
+        self.language = span_token.EscapeSequence.strip(open_info[3])
         self.children = (span_token.RawText(''.join(lines)),)
 
     @classmethod
@@ -431,10 +431,10 @@ class CodeFence(BlockToken):
         match_obj = cls.pattern.match(line)
         if not match_obj:
             return False
-        prepend, leader, lang, info_string_cont = match_obj.groups()
-        if leader[0] in lang or leader[0] in info_string_cont:
+        prepend, leader, info_string, lang = match_obj.groups()
+        if leader[0] in info_string:
             return False
-        cls._open_info = len(prepend), leader, lang, info_string_cont
+        cls._open_info = len(prepend), leader, info_string, lang
         return True
 
     @classmethod

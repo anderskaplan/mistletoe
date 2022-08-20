@@ -97,7 +97,7 @@ heading!
 now for a fenced code block 
   where indentation is also preserved. as are the double spaces at the end of this line:  
 ```
-  ~~~ this is an info string: behold the fenced code block with tildes!
+  ~~~this is an info string: behold the fenced code block with tildes!
   *tildes are great*
   ~~~
 1. a list item with an embedded
@@ -113,4 +113,6 @@ now for a fenced code block
             lines = file.readlines()
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(lines))
+        with open('roundtrip.md', 'w') as outf:
+            outf.write(rendered)
         self.assertEquals(lines, rendered)

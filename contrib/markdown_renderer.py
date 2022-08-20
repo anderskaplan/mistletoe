@@ -108,10 +108,7 @@ class MarkdownRenderer(BaseRenderer):
     def render_fenced_code_block(self, token: block_token.BlockCode) -> str:
         def make_lines():
             prefix = " " * token.indentation
-            if len(token.info_string) > 0:
-                yield "".join((prefix, token.tag, " ", token.info_string, "\n"))
-            else:
-                yield "".join((prefix, token.tag, "\n"))
+            yield "".join((prefix, token.tag, token.info_string, "\n"))
             for line in token.children[0].content[:-1].split("\n"):
                 yield "".join((prefix, line, "\n"))
             yield "".join((prefix, token.tag, "\n"))
