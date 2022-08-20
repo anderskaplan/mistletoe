@@ -787,6 +787,7 @@ class Footnote(BlockToken):
         if not match_info:
             return None
         _, dest_end, dest = match_info
+        dest_type = "angle_uri" if string[dest_start] == "<" else "uri"
 
         # optional spaces or tabs (including up to one line ending)
         title_start = shift_whitespace(string, dest_end)
@@ -799,7 +800,7 @@ class Footnote(BlockToken):
         if not match_info:
             eol = string[dest_end:title_start].find("\n")
             if eol >= 0:
-                return dest_end + eol + 1, (label, dest, "")
+                return dest_end + eol + 1, (label, dest, "", dest_type, None)
             else:
                 return None
         _, title_end, title = match_info
@@ -808,14 +809,15 @@ class Footnote(BlockToken):
         line_end = title_end
         while line_end < len(string):
             if string[line_end] == '\n':
-                return line_end + 1, (label, dest, title)
+                title_tag = string[title_start] if title_start < title_end else None
+                return line_end + 1, (label, dest, title, dest_type, title_tag)
             elif string[line_end] in whitespace:
                 line_end += 1
             else:
                 break
         eol = string[dest_end:title_start].find("\n")
         if eol >= 0:
-            return dest_end + eol + 1, (label, dest, "")
+            return dest_end + eol + 1, (label, dest, "", dest_type, None)
         else:
             return None
 
@@ -907,7 +909,7 @@ class Footnote(BlockToken):
 
     @staticmethod
     def append_footnotes(matches, root):
-        for key, dest, title in matches:
+        for key, dest, title, _, _ in matches:
             key = normalize_label(key)
             dest = span_token.EscapeSequence.strip(dest.strip())
             title = span_token.EscapeSequence.strip(title)

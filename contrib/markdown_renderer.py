@@ -21,9 +21,7 @@ class BlankLine(block_token.BlockToken):
 
 class LinkReferenceDefinition(block_token.BlockToken):
     def __init__(self, match):
-        self.label, self.dest, self.title = match
-        self.dest_type = getattr(match, "dest_type", None)
-        self.title_tag = getattr(match, "title_tag", None)
+        self.label, self.dest, self.title, self.dest_type, self.title_tag = match
 
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
@@ -85,8 +83,8 @@ class MarkdownRenderer(BaseRenderer):
         return self.render_image_or_link(token, '', token.target)
 
     def render_image_or_link(self, token, prefix, target):
-        if token.dest_type == "inline" or token.dest_type == "inline_angle":
-            if token.dest_type == "inline_angle":
+        if token.dest_type == "uri" or token.dest_type == "angle_uri":
+            if token.dest_type == "angle_uri":
                 dest_part = "".join(("<", target, ">"))
             else:
                 dest_part = target
@@ -208,11 +206,16 @@ class MarkdownRenderer(BaseRenderer):
         return self.render_inner(token)
 
     def render_link_reference_definition(self, token: LinkReferenceDefinition) -> str:
+        if token.dest_type == "angle_uri":
+            dest_part = "".join(("<", token.dest, ">"))
+        else:
+            dest_part = token.dest
         if len(token.title) > 0:
-            title_part = " '{}'".format(token.title)
+            closer = ')' if token.title_tag == '(' else token.title_tag
+            title_part = " {}{}{}".format(token.title_tag, token.title, closer)
         else:
             title_part = ""
-        content = "[{}]: {}{}\n".format(token.label, token.dest, title_part)
+        content = "[{}]: {}{}\n".format(token.label, dest_part, title_part)
         self.is_at_beginning_of_line = True
         return content
 

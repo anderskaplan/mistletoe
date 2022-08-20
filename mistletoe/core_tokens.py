@@ -176,10 +176,8 @@ def match_link_image(string, offset, delimiter, root=None):
                                       (dest_start, dest_end, dest),
                                       (title_start, title_end, title))
                     match.type = 'Link' if not image else 'Image'
-                    if dest_start < dest_end:
-                        match.dest_type = "angle_uri" if string[dest_start] == "<" else "uri"
-                    if title_start < title_end:
-                        match.title_tag = string[title_start]
+                    match.dest_type = "angle_uri" if dest_start < dest_end and string[dest_start] == "<" else "uri"
+                    match.title_tag = string[title_start] if title_start < title_end else None
                     return match
     # footnote link
     if follows(string, offset, '['):
