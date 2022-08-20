@@ -732,10 +732,6 @@ class Footnote(BlockToken):
     The constructor returns None, because the footnote information
     is stored in Footnote.read.
     """
-    # Not used, matched manually instead.
-    # We also rely on code block and similar being parsed beforehand here.
-    label_pattern = re.compile(r'[ \n]{0,3}\[(.+?)\]', re.DOTALL)
-
     def __new__(cls, _):
         return None
 
@@ -754,7 +750,7 @@ class Footnote(BlockToken):
         offset = 0
         matches = []
         while offset < len(string) - 1:
-            match_info = cls.match_reference(lines, string, offset)
+            match_info = cls.match_reference(string, offset)
             if match_info is None:
                 # backtrack the lines that have not been consumed
                 lines._index -= string[offset:].count('\n')
@@ -765,7 +761,7 @@ class Footnote(BlockToken):
         return matches or None
 
     @classmethod
-    def match_reference(cls, lines, string, offset):
+    def match_reference(cls, string, offset):
         # up to three spaces, "[", label, "]"
         match_info = cls.match_link_label(string, offset)
         if not match_info:
