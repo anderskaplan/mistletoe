@@ -145,3 +145,36 @@ class TestMarkdownRenderer(TestCase):
                  '[label-not-referred-to]: https://foo (title)\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
+
+    def test_table(self):
+        input = ['| Emoji | Description               |\n',
+                 '| :---: | ------------------------- |\n',
+                 '|   📚   | Update documentation.     |\n',
+                 '|   🐎   | Performance improvements. |\n',
+                 'etc, etc\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_table_with_varying_column_counts(self):
+        input = ['   |   header | x |  \n',
+                 '   | --- | ---: |   \n',
+                 '   | . | Performance improvements. | an extra column |   \n',
+                 'etc, etc\n']
+        xpect = ['| header |                         x |                 |\n',
+                 '| ------ | ------------------------: | --------------- |\n',
+                 '| .      | Performance improvements. | an extra column |\n',
+                 'etc, etc\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(xpect))
+
+    def test_table_with_narrow_column(self):
+        input = ['| xyz | ? |\n',
+                 '| --- | - |\n',
+                 '| a   | p |\n',
+                 '| b   | q |\n']
+        xpect = ['| xyz | ?   |\n',
+                 '| --- | --- |\n',
+                 '| a   | p   |\n',
+                 '| b   | q   |\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(xpect))

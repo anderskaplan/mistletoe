@@ -125,6 +125,57 @@ class MarkdownRenderer(BaseRenderer):
                 l = following_line_prefix + line
             yield l if not l.isspace() else ""
 
+    def table_row_to_text(self, row) -> Sequence[str]:
+        """
+        Render each table cell on a table row to text.
+        """
+        return [next(self.span_to_lines(col.children)) for col in row.children]
+
+    def calculate_table_column_widths(self, col_text) -> Sequence[int]:
+        """
+        Calculate column widths for a table.
+        """
+        MINIMUM_COLUMN_WIDTH = 3
+        col_widths = []
+        for row in col_text:
+            while len(col_widths) < len(row):
+                col_widths.append(MINIMUM_COLUMN_WIDTH)
+            for index, text in enumerate(row):
+                col_widths[index] = max(col_widths[index], len(text))
+        return col_widths
+
+    def table_separator_line_to_text(self, col_widths, col_align) -> Sequence[str]:
+        """
+        Create the text for the line separating header from contents in a table
+        given column widths and alignments.
+
+        Note: uses dashes for left justified columns, not a colon followed by dashes.
+        """
+        separator_text = []
+        for index, width in enumerate(col_widths):
+            align = col_align[index] if index < len(col_align) else None
+            sep = ":" if align == 0 else "-"
+            sep += "-" * (width - 2)
+            sep += ":" if align == 0 or align == 1 else "-"
+            separator_text.append(sep)
+        return separator_text
+
+    def table_row_to_line(self, col_text, col_widths, col_align) -> str:
+        """
+        Pad/align the text for a table row and add the borders (pipe characters).
+        """
+        padded_text = []
+        for index, width in enumerate(col_widths):
+            text = col_text[index] if index < len(col_text) else ""
+            align = col_align[index] if index < len(col_align) else None
+            if align is None:
+                padded_text.append("{0: <{w}}".format(text, w=width))
+            elif align == 0:
+                padded_text.append("{0: ^{w}}".format(text, w=width))
+            else:
+                padded_text.append("{0: >{w}}".format(text, w=width))
+        return "".join(("| ", " | ".join(padded_text), " |"))
+
     # span/inline tokens
     # rendered into lists of strings and LineBreak tokens.
 
@@ -236,14 +287,13 @@ class MarkdownRenderer(BaseRenderer):
             lines = [""]
         return self.prefix_lines(lines, token.leader + " ", " " * (len(token.leader) + 1))
 
-    # def render_table(self, token: block_token.Table) -> str:
-    #     return self.render_inner(token)
-
-    # def render_table_cell(self, token: block_token.TableCell) -> str:
-    #     return self.render_inner(token)
-
-    # def render_table_row(self, token: block_token.TableRow) -> str:
-    #     return self.render_inner(token)
+    def render_table(self, token: block_token.Table) -> Iterable[str]:
+        # note: column widths are not preserved. they are automatically adjusted to fit the contents.
+        content = [self.table_row_to_text(token.header), []]
+        content.extend(self.table_row_to_text(row) for row in token.children)
+        col_widths = self.calculate_table_column_widths(content)
+        content[1] = self.table_separator_line_to_text(col_widths, token.column_align)
+        return [self.table_row_to_line(col_text, col_widths, token.column_align) for col_text in content]
 
     def render_thematic_break(self, token: block_token.ThematicBreak) -> Iterable[str]:
         return [token.tag[:-1]]
