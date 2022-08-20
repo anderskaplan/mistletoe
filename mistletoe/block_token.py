@@ -732,8 +732,8 @@ class TableCell(BlockToken):
 
 class Footnote(BlockToken):
     """
-    Footnote token. A "link reference definition" according to the spec.
-    This is a leaf block token. Its children are inline (span) tokens.
+    Footnote token. A sequence of "link reference definitions" according to the spec.
+    This is a leaf block token without children.
 
     The constructor returns None, because the footnote information
     is stored in Footnote.read.

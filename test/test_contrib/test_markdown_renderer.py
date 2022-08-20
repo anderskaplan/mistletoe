@@ -4,14 +4,19 @@ from contrib.markdown_renderer import MarkdownRenderer
 from mistletoe.block_token import Document
 
 class TestMarkdownRenderer(TestCase):
+    @staticmethod
+    def roundtrip(input):
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+            return rendered
+
     def test_paragraphs_and_blank_lines(self):
         input = ['Paragraph 1. Single line. Followed by two white-space-only lines.\n',
                  '\n',
                  '\n',
                  'Paragraph 2. Two\n',
                  'lines, no final line break.']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input) + "\n")
 
     def test_line_breaks(self):
@@ -19,14 +24,12 @@ class TestMarkdownRenderer(TestCase):
                  'hard line break \\\n',
                  'another hard line break  \n',
                  'that\'s all.\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_span_tokens(self):
         input = ['_**emphasized and strong**_  \\*escaped\\*  `code span` ~~strikethrough~~ <h1>\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_images_and_links(self):
@@ -35,8 +38,7 @@ class TestMarkdownRenderer(TestCase):
                  'title*\')\n',
                  '![an \\[*image*\\]](#url "title")\n',
                  '<http://foo.bar>\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_thematic_break_and_headings(self):
@@ -47,8 +49,7 @@ class TestMarkdownRenderer(TestCase):
                  'setext\n',
                  'heading!\n',
                  '===============\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_numbered_list(self):
@@ -62,8 +63,7 @@ class TestMarkdownRenderer(TestCase):
                  '128) here begins a nested list.\n',
                  '     + apples\n',
                  '     + bananas\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(xpect))
 
     def test_bulleted_list(self):
@@ -72,8 +72,7 @@ class TestMarkdownRenderer(TestCase):
                  '  [links must be indented][properly].\n',
                  '\n',
                  '[properly]: uri\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_code_blocks(self):
@@ -91,8 +90,7 @@ class TestMarkdownRenderer(TestCase):
                  '1. a list item with an embedded\n',
                  '\n',
                  '       indented code block.\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_html_block(self):
@@ -101,16 +99,14 @@ class TestMarkdownRenderer(TestCase):
                  '\n',
                  '+ <h1>mistletoe<img src=\'https://cdn.rawgit.com/miyuchina/mistletoe/master/resources/logo.svg\' align=\'right\' width=\'128\' height=\'128\'></h1>\n',
                  '  <br>\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_block_quote(self):
         input = ['> a block quote\n',
                  '> > a nested block quote\n',
                  '> 1. > a list with a nested block quote\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_link_reference_definition(self):
@@ -122,15 +118,13 @@ class TestMarkdownRenderer(TestCase):
                  '\n',
                  '[libs-dest]: <https://libraries.io/> \'title\'\n',
                  '[t]: https://foo (title)\n']
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_roundtrip_readme(self):
         with open('README.md', 'r', encoding='utf-8') as file:
             input = file.readlines()
-        with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
+        rendered = self.roundtrip(input)
         with open('roundtrip.md', 'w', encoding='utf-8') as outf:
             outf.write(rendered)
         self.assertEqual("".join(input), rendered)

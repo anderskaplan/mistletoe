@@ -1,3 +1,10 @@
+"""
+Markdown renderer for mistletoe.
+
+This renderer is designed to make as "clean" a roundtrip as possible, markdown -> parsing -> rendering -> markdown,
+except for nonessential whitespace.
+"""
+
 from itertools import chain
 import re
 from mistletoe.base_renderer import BaseRenderer
@@ -5,6 +12,10 @@ from mistletoe import block_token, span_token
 
 
 class BlankLine(block_token.BlockToken):
+    """
+    Blank line token. Represents a single blank line.
+    This is a leaf block token without children.
+    """
     pattern = re.compile(r'\s*\n$')
 
     def __init__(self, _):
@@ -20,11 +31,24 @@ class BlankLine(block_token.BlockToken):
 
 
 class LinkReferenceDefinition(block_token.BlockToken):
+    """
+    Link reference definition. ([label]: dest "title")
+    This is a leaf block token without children.
+
+    Not included in the parsing process, but called by LinkReferenceDefinitionBlock.
+    """
     def __init__(self, match):
         self.label, self.dest, self.title, self.dest_type, self.title_tag = match
 
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
+    """
+    A sequence of "link reference definitions".
+    This is a container block token. Its children are link reference definition tokens.
+
+    This class inherits from Footnote and modifies the behavior of the constructor so
+    that the tokens are retained in the AST.
+    """
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
         obj.__init__(*args, **kwargs)
@@ -35,6 +59,9 @@ class LinkReferenceDefinitionBlock(block_token.Footnote):
 
 
 class MarkdownRenderer(BaseRenderer):
+    """
+    Markdown renderer.
+    """
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
