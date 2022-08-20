@@ -21,8 +21,8 @@ class TestMarkdownRenderer(TestCase):
         self.assertEqual(rendered, "".join(input) + "\n")
 
     def test_line_breaks(self):
-        input = ['soft line break \n',
-                 'hard line break \\\n',
+        input = ['soft line break\n',
+                 'hard line break\\\n',
                  'another hard line break  \n',
                  'that\'s all.\n']
         rendered = self.roundtrip(input)

@@ -39,7 +39,7 @@ class LinkReferenceDefinition(block_token.BlockToken):
     Not included in the parsing process, but called by LinkReferenceDefinitionBlock.
     """
     def __init__(self, match):
-        self.label, self.dest, self.title, self.dest_type, self.title_tag = match
+        self.label, self.dest, self.title, self.tag_dest_type, self.tag_title = match
 
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
@@ -112,22 +112,22 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_image_or_link(self, token, prefix, target):
         indent = self.indent() # note: must call self.indent() before self.render_inner(token)
-        if token.dest_type == "uri" or token.dest_type == "angle_uri":
-            if token.dest_type == "angle_uri":
+        if token.tag_dest_type == "uri" or token.tag_dest_type == "angle_uri":
+            if token.tag_dest_type == "angle_uri":
                 dest_part = "".join(("<", target, ">"))
             else:
                 dest_part = target
             if len(token.title) > 0:
-                closer = ')' if token.title_tag == '(' else token.title_tag
-                title_part = " {}{}{}".format(token.title_tag, token.title, closer)
+                closer = ')' if token.tag_title == '(' else token.tag_title
+                title_part = " {}{}{}".format(token.tag_title, token.title, closer)
             else:
                 title_part = ""
             return "{}{}[{}]({}{})".format(indent, prefix, self.render_inner(token), dest_part, title_part)
         else:
-            if token.dest_type == "full":
+            if token.tag_dest_type == "full":
                 text_part = "[{}]".format(self.render_inner(token))
-                dest_part = token.dest
-            elif token.dest_type == "collapsed":
+                dest_part = token.tag_dest
+            elif token.tag_dest_type == "collapsed":
                 text_part = "[{}]".format(self.render_inner(token))
                 dest_part = ""
             else:
@@ -142,7 +142,7 @@ class MarkdownRenderer(BaseRenderer):
         return "".join((self.indent(), "\\", self.render_inner(token)))
 
     def render_line_break(self, token: span_token.LineBreak) -> str:
-        content = "".join((self.indent(), token.tag, "\n"))
+        content = "".join((self.indent(), getattr(token, "tag", ""), "\n"))
         self.is_at_beginning_of_line = True
         return content
 
@@ -152,7 +152,7 @@ class MarkdownRenderer(BaseRenderer):
     # block tokens
 
     def render_heading(self, token: block_token.Heading) -> str:
-        trailer_part = "".join((" ", token.trailer)) if len(token.trailer) > 0 else ""
+        trailer_part = "".join((" ", token.tag_trailer)) if len(token.tag_trailer) > 0 else ""
         content = "".join((self.indent(), "#" * token.level, " ", self.render_inner(token), trailer_part, "\n"))
         self.is_at_beginning_of_line = True
         return content
@@ -233,13 +233,13 @@ class MarkdownRenderer(BaseRenderer):
         return self.render_inner(token)
 
     def render_link_reference_definition(self, token: LinkReferenceDefinition) -> str:
-        if token.dest_type == "angle_uri":
+        if token.tag_dest_type == "angle_uri":
             dest_part = "".join(("<", token.dest, ">"))
         else:
             dest_part = token.dest
         if len(token.title) > 0:
-            closer = ')' if token.title_tag == '(' else token.title_tag
-            title_part = " {}{}{}".format(token.title_tag, token.title, closer)
+            closer = ')' if token.tag_title == '(' else token.tag_title
+            title_part = " {}{}{}".format(token.tag_title, token.title, closer)
         else:
             title_part = ""
         content = "{}[{}]: {}{}\n".format(self.indent(), token.label, dest_part, title_part)

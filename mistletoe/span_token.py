@@ -159,9 +159,9 @@ class Image(SpanToken):
     def __init__(self, match):
         self.src = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
-        self.dest_type = getattr(match, "dest_type", None)
-        self.dest = getattr(match, "dest", None)
-        self.title_tag = getattr(match, "title_tag", None)
+        self.tag_dest_type = getattr(match, "tag_dest_type", None)
+        self.tag_dest = getattr(match, "tag_dest", None)
+        self.tag_title = getattr(match, "tag_title", None)
 
 
 class Link(SpanToken):
@@ -178,9 +178,9 @@ class Link(SpanToken):
     def __init__(self, match):
         self.target = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
-        self.dest_type = getattr(match, "dest_type", None)
-        self.dest = getattr(match, "dest", None)
-        self.title_tag = getattr(match, "title_tag", None)
+        self.tag_dest_type = getattr(match, "tag_dest_type", None)
+        self.tag_dest = getattr(match, "tag_dest", None)
+        self.tag_title = getattr(match, "tag_title", None)
 
 
 class AutoLink(SpanToken):
@@ -237,7 +237,8 @@ class LineBreak(SpanToken):
         content = match.group(1)
         self.soft = not content.startswith(('  ', '\\'))
         self.content = ''
-        self.tag = content
+        if not self.soft:
+            self.tag = content
 
 
 class RawText(SpanToken):

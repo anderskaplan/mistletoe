@@ -176,8 +176,8 @@ def match_link_image(string, offset, delimiter, root=None):
                                       (dest_start, dest_end, dest),
                                       (title_start, title_end, title))
                     match.type = 'Link' if not image else 'Image'
-                    match.dest_type = "angle_uri" if dest_start < dest_end and string[dest_start] == "<" else "uri"
-                    match.title_tag = string[title_start] if title_start < title_end else None
+                    match.tag_dest_type = "angle_uri" if dest_start < dest_end and string[dest_start] == "<" else "uri"
+                    match.tag_title = string[title_start] if title_start < title_end else None
                     return match
     # footnote link
     if follows(string, offset, '['):
@@ -191,8 +191,8 @@ def match_link_image(string, offset, delimiter, root=None):
                               (-1, -1, dest),
                               (-1, -1, title))
             match.type = 'Link' if not image else 'Image'
-            match.dest = match_info[2]
-            match.dest_type = "full"
+            match.tag_dest = match_info[2]
+            match.tag_dest_type = "full"
             return match
         ref = is_link_label(text, root)
         if ref:
@@ -205,7 +205,7 @@ def match_link_image(string, offset, delimiter, root=None):
                                   (-1, -1, dest),
                                   (-1, -1, title))
                 match.type = 'Link' if not image else 'Image'
-                match.dest_type = "collapsed"
+                match.tag_dest_type = "collapsed"
                 return match
         return None
     # shortcut footnote link: [dest]
@@ -218,7 +218,7 @@ def match_link_image(string, offset, delimiter, root=None):
                           (-1, -1, dest),
                           (-1, -1, title))
         match.type = 'Link' if not image else 'Image'
-        match.dest_type = "shortcut"
+        match.tag_dest_type = "shortcut"
         return match
     return None
 

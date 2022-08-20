@@ -166,7 +166,7 @@ class Heading(BlockToken):
     content = ''
 
     def __init__(self, match):
-        self.level, content, self.trailer = match
+        self.level, content, self.tag_trailer = match
         super().__init__(content, span_token.tokenize_inner)
 
     @classmethod
@@ -178,13 +178,13 @@ class Heading(BlockToken):
         cls.content = (match_obj.group(2) or '').strip()
         if set(cls.content) == {'#'}:
             cls.content = ''
-        cls.trailer = (match_obj.group(3) or '').strip()
+        cls.tag_trailer = (match_obj.group(3) or '').strip()
         return True
 
     @classmethod
     def read(cls, lines):
         next(lines)
-        return cls.level, cls.content, cls.trailer
+        return cls.level, cls.content, cls.tag_trailer
 
 class SetextHeading(BlockToken):
     """
@@ -810,8 +810,8 @@ class Footnote(BlockToken):
         line_end = title_end
         while line_end < len(string):
             if string[line_end] == '\n':
-                title_tag = string[title_start] if title_start < title_end else None
-                return line_end + 1, (label, dest, title, dest_type, title_tag)
+                tag_title = string[title_start] if title_start < title_end else None
+                return line_end + 1, (label, dest, title, dest_type, tag_title)
             elif string[line_end] in whitespace:
                 line_end += 1
             else:
