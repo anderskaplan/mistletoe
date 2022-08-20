@@ -121,6 +121,17 @@ now for a fenced code block
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, input)
 
+    def test_block_quote(self):
+        input = \
+"""
+> a block quote
+> > a nested block quote
+> 1. > a list with a nested block quote
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, input)
+
     def test_roundtrip_readme(self):
         with open('README.md', 'r') as file:
             lines = file.readlines()

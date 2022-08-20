@@ -95,8 +95,15 @@ class MarkdownRenderer(BaseRenderer):
         self.is_at_beginning_of_line = True
         return content
 
-    # def render_quote(self, token: block_token.Quote) -> str:
-    #     return self.render_inner(token)
+    def render_quote(self, token: block_token.Quote) -> str:
+        prefix = "".join((self.indent(), "> "))
+        prev_indentation = self.indentation
+        self.indentation += "> "
+        self.is_at_beginning_of_line = False
+        content = "".join((prefix, self.render_inner(token), "\n" if not self.is_at_beginning_of_line else ""))
+        self.is_at_beginning_of_line = True
+        self.indentation = prev_indentation
+        return content
 
     def render_paragraph(self, token: block_token.Paragraph) -> str:
         content = "".join((self.indent(), self.render_inner(token), "\n"))
@@ -130,6 +137,7 @@ class MarkdownRenderer(BaseRenderer):
         prefix = "".join((self.indent(), token.leader, " "))
         prev_indentation = self.indentation
         self.indentation += " " * (len(token.leader) + 1)
+        self.is_at_beginning_of_line = False
         content = "".join((prefix, self.render_inner(token), "\n" if not self.is_at_beginning_of_line else ""))
         self.is_at_beginning_of_line = True
         self.indentation = prev_indentation
