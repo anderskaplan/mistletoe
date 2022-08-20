@@ -637,7 +637,7 @@ class Table(BlockToken):
     This is a container block token. Its children are table row tokens.
 
     Attributes:
-        has_header (bool): whether table has header row.
+        header: header row (TableRow).
         column_align (list): align options for each column (default to [None]).
         children (list): inner tokens (TableRows).
     """
@@ -649,7 +649,9 @@ class Table(BlockToken):
             self.header = TableRow(lines[0], self.column_align)
             self.children = [TableRow(line, self.column_align) for line in lines[2:]]
         else:
+            # note: not reachable, because read() guarantees the presence of three dashes
             self.column_align = [None]
+            self.header = None
             self.children = [TableRow(line) for line in lines]
 
     @staticmethod
