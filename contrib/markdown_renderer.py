@@ -96,10 +96,29 @@ class MarkdownRenderer(BaseRenderer):
         return content
 
     def render_block_code(self, token: block_token.BlockCode) -> str:
-        return self.render_inner(token)
+        # remove the final endline before splitting into lines.
+        lines = token.children[0].content[:-1].split("\n")
+        prefix = self.indentation + "    "
+        def process_line(line):
+            return "".join((prefix, line, "\n"))
+        content = "".join(map(process_line, lines))
+        self.line_break_emitted = True
+        return content
 
     def render_fenced_code_block(self, token: block_token.BlockCode) -> str:
-        return self.render_inner(token)
+        def make_lines():
+            prefix = " " * token.indentation
+            if len(token.info_string) > 0:
+                yield "".join((prefix, token.tag, " ", token.info_string, "\n"))
+            else:
+                yield "".join((prefix, token.tag, "\n"))
+            for line in token.children[0].content[:-1].split("\n"):
+                yield "".join((prefix, line, "\n"))
+            yield "".join((prefix, token.tag, "\n"))
+
+        content = "".join(make_lines())
+        self.line_break_emitted = True
+        return content
 
     def render_list(self, token: block_token.List) -> str:
         return self.render_inner(token)

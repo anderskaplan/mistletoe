@@ -97,9 +97,12 @@ heading!
 now for a fenced code block 
   where indentation is also preserved. as are the double spaces at the end of this line:  
 ```
-~~~ this is an info string: behold the fenced code block with tildes!
-*tildes are great*
-~~~
+  ~~~ this is an info string: behold the fenced code block with tildes!
+  *tildes are great*
+  ~~~
+1. a list item with an embedded
+
+       indented code block.
 """
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(input))
