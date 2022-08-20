@@ -161,12 +161,12 @@ class Heading(BlockToken):
         children (list): inner tokens.
     """
     repr_attributes = ("level",)
-    pattern = re.compile(r' {0,3}(#{1,6})(?:\n|\s+?(.*?)(?:\n|\s+?#+\s*?$))')
+    pattern = re.compile(r' {0,3}(#{1,6})(?:\n|\s+?(.*?)(\n|\s+?#+\s*?$))')
     level = 0
     content = ''
 
     def __init__(self, match):
-        self.level, content = match
+        self.level, content, self.trailer = match
         super().__init__(content, span_token.tokenize_inner)
 
     @classmethod
@@ -178,12 +178,13 @@ class Heading(BlockToken):
         cls.content = (match_obj.group(2) or '').strip()
         if set(cls.content) == {'#'}:
             cls.content = ''
+        cls.trailer = (match_obj.group(3) or '').strip()
         return True
 
     @classmethod
     def read(cls, lines):
         next(lines)
-        return cls.level, cls.content
+        return cls.level, cls.content, cls.trailer
 
 class SetextHeading(BlockToken):
     """

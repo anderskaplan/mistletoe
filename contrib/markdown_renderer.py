@@ -83,19 +83,18 @@ class MarkdownRenderer(BaseRenderer):
         return self.render_image_or_link(token, '', token.target)
 
     def render_image_or_link(self, token, prefix, target):
+        indent = self.indent() # note: must call self.indent() before self.render_inner(token)
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
             if token.dest_type == "angle_uri":
                 dest_part = "".join(("<", target, ">"))
             else:
                 dest_part = target
-
             if len(token.title) > 0:
                 closer = ')' if token.title_tag == '(' else token.title_tag
                 title_part = " {}{}{}".format(token.title_tag, token.title, closer)
             else:
                 title_part = ""
-
-            return "{}{}[{}]({}{})".format(self.indent(), prefix, self.render_inner(token), dest_part, title_part)
+            return "{}{}[{}]({}{})".format(indent, prefix, self.render_inner(token), dest_part, title_part)
         else:
             if token.dest_type == "full":
                 text_part = "[{}]".format(self.render_inner(token))
@@ -106,8 +105,7 @@ class MarkdownRenderer(BaseRenderer):
             else:
                 text_part = ""
                 dest_part = self.render_inner(token)
-
-            return "{}{}{}[{}]".format(self.indent(), prefix, text_part, dest_part)
+            return "{}{}{}[{}]".format(indent, prefix, text_part, dest_part)
 
     def render_auto_link(self, token: span_token.AutoLink) -> str:
         return "".join((self.indent(), "<", self.render_inner(token), ">"))
@@ -126,7 +124,8 @@ class MarkdownRenderer(BaseRenderer):
     # block tokens
 
     def render_heading(self, token: block_token.Heading) -> str:
-        content = "".join((self.indent(), "#" * token.level, " ", self.render_inner(token), " ", "#" * token.level, "\n"))
+        trailer_part = "".join((" ", token.trailer)) if len(token.trailer) > 0 else ""
+        content = "".join((self.indent(), "#" * token.level, " ", self.render_inner(token), trailer_part, "\n"))
         self.is_at_beginning_of_line = True
         return content
 
@@ -215,7 +214,7 @@ class MarkdownRenderer(BaseRenderer):
             title_part = " {}{}{}".format(token.title_tag, token.title, closer)
         else:
             title_part = ""
-        content = "[{}]: {}{}\n".format(token.label, dest_part, title_part)
+        content = "{}[{}]: {}{}\n".format(self.indent(), token.label, dest_part, title_part)
         self.is_at_beginning_of_line = True
         return content
 

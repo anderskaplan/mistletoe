@@ -42,6 +42,7 @@ class TestMarkdownRenderer(TestCase):
     def test_thematic_break_and_headings(self):
         input = [' **  * ** * ** * **\n',
                  '## atx *heading* ##\n',
+                 '# another atx heading, without ending hashes\n',
                  '\n',
                  'setext\n',
                  'heading!\n',
@@ -68,7 +69,9 @@ class TestMarkdownRenderer(TestCase):
     def test_bulleted_list(self):
         input = ['* **Fast**:\n',
                  '  mistletoe is the fastest implementation of CommonMark in Python.\n',
-                 '  See the [performance][performance] section for details.\n']
+                 '  [links must be indented][properly].\n',
+                 '\n',
+                 '[properly]: uri\n']
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document("".join(input)))
         self.assertEqual(rendered, "".join(input))
