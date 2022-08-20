@@ -756,6 +756,8 @@ class Footnote(BlockToken):
         while offset < len(string) - 1:
             match_info = cls.match_reference(lines, string, offset)
             if match_info is None:
+                # backtrack the lines that have not been consumed
+                lines._index -= string[offset:].count('\n')
                 break
             offset, match = match_info
             matches.append(match)
@@ -764,40 +766,57 @@ class Footnote(BlockToken):
 
     @classmethod
     def match_reference(cls, lines, string, offset):
+        # up to three spaces, "[", label, "]"
         match_info = cls.match_link_label(string, offset)
         if not match_info:
-            cls.backtrack(lines, string, offset)
             return None
         _, label_end, label = match_info
 
+        # ":"
         if not follows(string, label_end-1, ':'):
-            cls.backtrack(lines, string, offset)
             return None
 
-        match_info = cls.match_link_dest(string, label_end)
+        # optional spaces or tabs (including up to one line ending)
+        dest_start = shift_whitespace(string, label_end + 1)
+        if dest_start == len(string):
+            return None
+
+        # link destination
+        match_info = cls.match_link_dest(string, dest_start)
         if not match_info:
-            cls.backtrack(lines, string, offset)
             return None
         _, dest_end, dest = match_info
 
-        match_info = cls.match_link_title(string, dest_end)
-        if not match_info:
-            cls.backtrack(lines, string, dest_end)
+        # optional spaces or tabs (including up to one line ending)
+        title_start = shift_whitespace(string, dest_end)
+        if title_start == dest_end and title_start < len(string):
             return None
+
+        # optional link title, which if it is present must be separated from the link
+        # destination by spaces or tabs
+        match_info = cls.match_link_title(string, title_start)
+        if not match_info:
+            eol = string[dest_end:title_start].find("\n")
+            if eol >= 0:
+                return dest_end + eol + 1, (label, dest, "")
+            else:
+                return None
         _, title_end, title = match_info
 
+        # optional spaces or tabs, and a final line ending.
         line_end = title_end
         while line_end < len(string):
-            if not string[line_end] in whitespace:
-                cls.backtrack(lines, string, offset)
-                return None
-            elif string[line_end] == '\n':
+            if string[line_end] == '\n':
+                return line_end + 1, (label, dest, title)
+            elif string[line_end] in whitespace:
                 line_end += 1
-                break
             else:
-                line_end += 1
-
-        return line_end, (label, dest, title)
+                break
+        eol = string[dest_end:title_start].find("\n")
+        if eol >= 0:
+            return dest_end + eol + 1, (label, dest, "")
+        else:
+            return None
 
     @classmethod
     def match_link_label(cls, string, offset):
@@ -806,6 +825,8 @@ class Footnote(BlockToken):
         escaped = False
         for i, c in enumerate(string[offset:], start=offset):
             if c == '\\' and not escaped:
+                if start == -1:
+                    return None
                 escaped = True
             elif c == '[' and not escaped:
                 if start == -1:
@@ -813,6 +834,8 @@ class Footnote(BlockToken):
                 else:
                     return None
             elif c == ']' and not escaped:
+                if start == -1:
+                    return None
                 end = i
                 label = string[start+1:end]
                 if label.strip() != '':
@@ -820,15 +843,12 @@ class Footnote(BlockToken):
                 return None
             elif escaped:
                 escaped = False
-            elif c not in whitespace and start == -1:
+            elif start == -1 and not (c == " " and i - offset < 3):
                 return None
         return None
 
     @classmethod
     def match_link_dest(cls, string, offset):
-        offset = shift_whitespace(string, offset+1)
-        if offset == len(string):
-            return None
         if string[offset] == '<':
             escaped = False
             for i, c in enumerate(string[offset+1:], start=offset+1):
@@ -864,18 +884,16 @@ class Footnote(BlockToken):
 
     @classmethod
     def match_link_title(cls, string, offset):
-        new_offset = shift_whitespace(string, offset)
-        if new_offset == len(string):
-            return offset, offset, ''
-        if string[new_offset] == '"':
+        if offset == len(string):
+            return None
+        if string[offset] == '"':
             closing = '"'
-        elif string[new_offset] == "'":
+        elif string[offset] == "'":
             closing = "'"
-        elif string[new_offset] == '(':
+        elif string[offset] == '(':
             closing = ')'
         else:
-            return offset, offset, ''
-        offset = new_offset
+            return None
         escaped = False
         for i, c in enumerate(string[offset+1:], start=offset+1):
             if c == '\\' and not escaped:
@@ -894,18 +912,6 @@ class Footnote(BlockToken):
             title = span_token.EscapeSequence.strip(title)
             if key not in root.footnotes:
                 root.footnotes[key] = dest, title
-
-    @staticmethod
-    def backtrack(lines, string, offset):
-        """
-        Called when we iterated over some lines and found nothing
-        relevant on them. This returns those lines back to the parsing process.
-        """
-
-        # call lstrip() to prevent returning too many lines back (hence infinite loop), like in this case:
-        # * valid footlink definition line:      `[key]: valueN\r\n` (here `offset` points to `\r` after parsing the definition)
-        # * follow-up line containing just text: `something\n` (only this line should be re-processed and parsed as a Paragraph)
-        lines._index -= string[offset:].lstrip().count('\n')
 
 
 class ThematicBreak(BlockToken):
