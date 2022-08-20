@@ -108,6 +108,19 @@ now for a fenced code block
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, input)
 
+    def test_html_block(self):
+        input = \
+"""
+<h1>mistletoe<img src='https://cdn.rawgit.com/miyuchina/mistletoe/master/resources/logo.svg' align='right' width='128' height='128'></h1>
+<br>
+
++ <h1>mistletoe<img src='https://cdn.rawgit.com/miyuchina/mistletoe/master/resources/logo.svg' align='right' width='128' height='128'></h1>
+  <br>
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, input)
+
     def test_roundtrip_readme(self):
         with open('README.md', 'r') as file:
             lines = file.readlines()

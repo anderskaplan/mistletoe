@@ -106,7 +106,7 @@ class XWiki20Renderer(BaseRenderer):
 
     def render_html_block(self, token):
         template = '{{{{html wiki="true"}}}}\n{}\n{{{{/html}}}}' + self._block_eol(token)
-        return template.format(token.content)
+        return template.format(token.content.rstrip('\n'))
 
     def render_heading(self, token):
         template = '{level} {inner} {level}'

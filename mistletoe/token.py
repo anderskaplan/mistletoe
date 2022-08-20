@@ -54,7 +54,7 @@ class Token:
                 output += " with {} children".format(count)
 
         if hasattr(self, "content"):
-           output += " content=" + _short_repr(self.content)
+           output += " content=" + _short_repr(self.content.rstrip('\n'))
 
         for attrname in self.repr_attributes:
             attrvalue = getattr(self, attrname)

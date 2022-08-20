@@ -144,7 +144,7 @@ class MarkdownRenderer(BaseRenderer):
         return content
 
     def render_html_block(self, token: block_token.HTMLBlock) -> str:
-        content = "".join((self.indent(), token.content))
+        content = "".join((self.indent(), token.content)) # token.content includes the newline
         self.line_break_emitted = True
         return content
 
