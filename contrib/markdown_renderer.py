@@ -5,10 +5,11 @@ This renderer is designed to make as "clean" a roundtrip as possible, markdown -
 except for nonessential whitespace.
 """
 
-from itertools import chain
 import re
-from mistletoe.base_renderer import BaseRenderer
+from itertools import chain
+
 from mistletoe import block_token, span_token
+from mistletoe.base_renderer import BaseRenderer
 
 
 class BlankLine(block_token.BlockToken):

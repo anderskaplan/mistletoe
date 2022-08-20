@@ -1,7 +1,8 @@
-from unittest import TestCase, mock
-from contrib.markdown_renderer import MarkdownRenderer
+from unittest import TestCase
 
+from contrib.markdown_renderer import MarkdownRenderer
 from mistletoe.block_token import Document
+
 
 class TestMarkdownRenderer(TestCase):
     @staticmethod
