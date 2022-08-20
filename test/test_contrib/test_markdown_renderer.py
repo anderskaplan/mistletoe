@@ -65,7 +65,7 @@ heading!
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, input)
 
-    def test_list(self):
+    def test_numbered_list(self):
         input = \
 """
   22)  *yeah*
@@ -85,6 +85,18 @@ heading!
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(input))
         self.assertEquals(rendered, expected)
+
+    def test_bulleted_list(self):
+        input = \
+"""
+* **Fast**:
+  mistletoe is the fastest implementation of CommonMark in Python.
+  See the [performance][performance] section for details.
+
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, input)
 
     def test_code_blocks(self):
         input = \

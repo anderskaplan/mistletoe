@@ -42,6 +42,9 @@ class MarkdownRenderer(BaseRenderer):
 
     # span/inline tokens
 
+    def render_raw_text(self, token) -> str:
+        return "".join((self.indent(), token.content))
+
     def render_strong(self, token: span_token.Strong) -> str:
         return "".join((self.indent(), token.tag * 2, self.render_inner(token), token.tag * 2))
 
