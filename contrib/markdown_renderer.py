@@ -40,6 +40,8 @@ class LinkReferenceDefinition(block_token.BlockToken):
 
     Not included in the parsing process, but called by LinkReferenceDefinitionBlock.
     """
+    repr_attributes = ("label", "dest", "title")
+
     def __init__(self, match):
         self.label, self.dest, self.title, self.tag_dest_type, self.tag_title = match
 
