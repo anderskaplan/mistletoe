@@ -19,22 +19,30 @@ class BlankLine(block_token.BlockToken):
         return [next(lines)]
 
 
-class LinkReferenceDefinition(block_token.Footnote):
+class LinkReferenceDefinition(block_token.BlockToken):
+    def __init__(self, match):
+        self.label, self.dest, self.title = match
+        self.dest_type = getattr(match, "dest_type", None)
+        self.title_tag = getattr(match, "title_tag", None)
+
+
+class LinkReferenceDefinitionBlock(block_token.Footnote):
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
         obj.__init__(*args, **kwargs)
         return obj
 
     def __init__(self, matches):
-        self.label, self.dest, self.title = matches[0]
+        self.children = list(map(LinkReferenceDefinition, matches))
 
 
 class MarkdownRenderer(BaseRenderer):
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
-        super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinition), extras))
+        super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
         self.render_map["SetextHeading"] = self.render_setext_heading
         self.render_map["CodeFence"] = self.render_fenced_code_block
+        self.render_map["LinkReferenceDefinition"] = self.render_link_reference_definition
         self.indentation = ""
         self.is_at_beginning_of_line = True
 
@@ -196,8 +204,15 @@ class MarkdownRenderer(BaseRenderer):
         lines = token.content[:-1].split("\n")
         return self.indent_lines(lines)
 
+    def render_link_reference_definition_block(self, token: LinkReferenceDefinitionBlock) -> str:
+        return self.render_inner(token)
+
     def render_link_reference_definition(self, token: LinkReferenceDefinition) -> str:
-        content = "[{}]: {} '{}'\n".format(token.label, token.dest, token.title)
+        if len(token.title) > 0:
+            title_part = " '{}'".format(token.title)
+        else:
+            title_part = ""
+        content = "[{}]: {}{}\n".format(token.label, token.dest, title_part)
         self.is_at_beginning_of_line = True
         return content
 

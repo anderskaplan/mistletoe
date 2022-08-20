@@ -177,7 +177,7 @@ def match_link_image(string, offset, delimiter, root=None):
                                       (title_start, title_end, title))
                     match.type = 'Link' if not image else 'Image'
                     if dest_start < dest_end:
-                        match.dest_type = "inline_angle" if string[dest_start] == "<" else "inline"
+                        match.dest_type = "angle_uri" if string[dest_start] == "<" else "uri"
                     if title_start < title_end:
                         match.title_tag = string[title_start]
                     return match
