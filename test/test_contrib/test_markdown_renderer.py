@@ -44,8 +44,9 @@ that's all
     def test_images_and_links(self):
         input = \
 """[a link](#url (title))
-[another link](<someplace> '*emphasized title*')
-![an \\[*image*\\]](#url)
+[another link](<someplace> '*emphasized
+title*')
+![an \\[*image*\\]](#url "title")
 <http://foo.bar>
 """
         with MarkdownRenderer() as renderer:
@@ -139,6 +140,23 @@ now for a fenced code block
 > a block quote
 > > a nested block quote
 > 1. > a list with a nested block quote
+"""
+        with MarkdownRenderer() as renderer:
+            rendered = renderer.render(Document(input))
+        self.assertEquals(rendered, input)
+
+    def test_link_reference_definition(self):
+        input = \
+"""
+[github]: https://github.com
+
+on [Libraries.io][libs-dest], but this
+list of [Dependents][github] is tracked
+shortcut [github] & collapsed [github][]
+
+[libs-dest]:
+<https://libraries.io/>
+'title'
 """
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(input))

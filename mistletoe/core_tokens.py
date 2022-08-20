@@ -165,12 +165,14 @@ def match_link_image(string, offset, delimiter, root=None):
                                       (dest_start, dest_end, dest),
                                       (title_start, title_end, title))
                     match.type = 'Link' if not image else 'Image'
+                    if dest_start < dest_end:
+                        match.dest_type = "inline_angle" if string[dest_start] == "<" else "inline"
                     if title_start < title_end:
                         match.title_tag = string[title_start]
                     return match
     # footnote link
     if follows(string, offset, '['):
-        # full footnote link
+        # full footnote link: [text][dest]
         result = match_link_label(string, offset+1, root)
         if result:
             match_info, (dest, title) = result
@@ -180,10 +182,12 @@ def match_link_image(string, offset, delimiter, root=None):
                               (-1, -1, dest),
                               (-1, -1, title))
             match.type = 'Link' if not image else 'Image'
+            match.dest = match_info[2]
+            match.dest_type = "full"
             return match
         ref = is_link_label(text, root)
         if ref:
-            # compact footnote link
+            # compact (collapsed) footnote link: [dest][]
             if follows(string, offset+1, ']'):
                 dest, title = ref
                 end = offset + 3
@@ -192,9 +196,10 @@ def match_link_image(string, offset, delimiter, root=None):
                                   (-1, -1, dest),
                                   (-1, -1, title))
                 match.type = 'Link' if not image else 'Image'
+                match.dest_type = "collapsed"
                 return match
         return None
-    # shortcut footnote link
+    # shortcut footnote link: [dest]
     ref = is_link_label(text, root)
     if ref:
         dest, title = ref
@@ -204,6 +209,7 @@ def match_link_image(string, offset, delimiter, root=None):
                           (-1, -1, dest),
                           (-1, -1, title))
         match.type = 'Link' if not image else 'Image'
+        match.dest_type = "shortcut"
         return match
     return None
 

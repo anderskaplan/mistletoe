@@ -3,6 +3,7 @@ import re
 from mistletoe.base_renderer import BaseRenderer
 from mistletoe import block_token, span_token
 
+
 class BlankLine(block_token.BlockToken):
     pattern = re.compile(r'\s*\n$')
 
@@ -17,9 +18,21 @@ class BlankLine(block_token.BlockToken):
     def read(cls, lines):
         return [next(lines)]
 
+
+class LinkReferenceDefinition(block_token.Footnote):
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
+        obj.__init__(*args, **kwargs)
+        return obj
+
+    def __init__(self, matches):
+        self.label, self.dest, self.title = matches[0]
+
+
 class MarkdownRenderer(BaseRenderer):
     def __init__(self, *extras):
-        super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine), extras))
+        block_token.remove_token(block_token.Footnote)
+        super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinition), extras))
         self.render_map["SetextHeading"] = self.render_setext_heading
         self.render_map["CodeFence"] = self.render_fenced_code_block
         self.indentation = ""
@@ -64,12 +77,31 @@ class MarkdownRenderer(BaseRenderer):
         return self.render_image_or_link(token, '', token.target)
 
     def render_image_or_link(self, token, prefix, target):
-        if len(token.title) > 0:
-            opener = token.title_tag
-            closer = ')' if token.title_tag == '(' else token.title_tag
-            return "{}{}[{}]({} {}{}{})".format(self.indent(), prefix, self.render_inner(token), target, opener, token.title, closer)
+        if token.dest_type == "inline" or token.dest_type == "inline_angle":
+            if token.dest_type == "inline_angle":
+                dest_part = "".join(("<", target, ">"))
+            else:
+                dest_part = target
+
+            if len(token.title) > 0:
+                closer = ')' if token.title_tag == '(' else token.title_tag
+                title_part = " {}{}{}".format(token.title_tag, token.title, closer)
+            else:
+                title_part = ""
+
+            return "{}{}[{}]({}{})".format(self.indent(), prefix, self.render_inner(token), dest_part, title_part)
         else:
-            return "{}{}[{}]({})".format(self.indent(), prefix, self.render_inner(token), target)
+            if token.dest_type == "full":
+                text_part = "[{}]".format(self.render_inner(token))
+                dest_part = token.dest
+            elif token.dest_type == "collapsed":
+                text_part = "[{}]".format(self.render_inner(token))
+                dest_part = ""
+            else:
+                text_part = ""
+                dest_part = self.render_inner(token)
+
+            return "{}{}{}[{}]".format(self.indent(), prefix, text_part, dest_part)
 
     def render_auto_link(self, token: span_token.AutoLink) -> str:
         return "".join((self.indent(), "<", self.render_inner(token), ">"))
@@ -163,6 +195,11 @@ class MarkdownRenderer(BaseRenderer):
     def render_html_block(self, token: block_token.HTMLBlock) -> str:
         lines = token.content[:-1].split("\n")
         return self.indent_lines(lines)
+
+    def render_link_reference_definition(self, token: LinkReferenceDefinition) -> str:
+        content = "[{}]: {} '{}'\n".format(token.label, token.dest, token.title)
+        self.is_at_beginning_of_line = True
+        return content
 
     def render_blank_line(self, token: BlankLine) -> str:
         self.blank_line_emitted = True

@@ -159,11 +159,14 @@ class Image(SpanToken):
     def __init__(self, match):
         self.src = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
+        self.dest_type = getattr(match, "dest_type", None)
+        self.dest = getattr(match, "dest", None)
+        self.title_tag = getattr(match, "title_tag", None)
 
 
 class Link(SpanToken):
     """
-    Link token. ("[name](target)")
+    Link token. ("[name](target "title")")
     This is an inline token. Its children are inline (span) tokens holding the link text.
     One of the core tokens.
 
@@ -175,6 +178,8 @@ class Link(SpanToken):
     def __init__(self, match):
         self.target = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
+        self.dest_type = getattr(match, "dest_type", None)
+        self.dest = getattr(match, "dest", None)
         self.title_tag = getattr(match, "title_tag", None)
 
 
