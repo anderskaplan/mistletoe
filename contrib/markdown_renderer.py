@@ -69,7 +69,6 @@ class MarkdownRenderer(BaseRenderer):
     """
     Markdown renderer.
     """
-
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
@@ -81,25 +80,30 @@ class MarkdownRenderer(BaseRenderer):
         """
         Render a sequence of span (inline) tokens into a sequence of lines.
         """
-        def walk_tuple_tree(t):
-            if not isinstance(t, tuple):
-                yield t
-            else:
-                for item in t:
-                    for inner in walk_tuple_tree(item):
-                        yield inner
-
         current_line = []
-        tree = tuple(map(self.render, tokens))
-        for w in walk_tuple_tree(tree):
-            if isinstance(w, span_token.LineBreak):
-                current_line.append(getattr(w, "tag", ""))
-                yield "".join(current_line)
-                current_line = []
-            else:
-                current_line.append(w)
+        for rendered_items in map(self.render, tokens):
+            for w in rendered_items:
+                if isinstance(w, span_token.LineBreak):
+                    current_line.append(getattr(w, "tag", ""))
+                    yield "".join(current_line)
+                    current_line = []
+                else:
+                    current_line.append(w)
         if len(current_line) > 0:
             yield "".join(current_line)
+
+    def embed_span_content(self, leader: str, tokens: Iterable[span_token.SpanToken], trailer: str = None) -> Sequence:
+        """
+        Flatten the content tree given by `tokens` into a list. Append a leader and a trailer.
+
+        For example: (RawText('text'), Emphasis(RawText('Inner text')))
+        becomes: ['text', '*', 'Inner text', '*']
+        """
+        content = [leader]
+        for rendered_items in map(self.render, tokens):
+            content.extend(rendered_items)
+        content.append(trailer or leader)
+        return content
 
     def block_to_lines(self, tokens: Iterable[block_token.BlockToken]) -> Iterable[str]:
         """
@@ -123,22 +127,22 @@ class MarkdownRenderer(BaseRenderer):
             yield l if not l.isspace() else ""
 
     # span/inline tokens
-    # rendered into tuple trees where the leaf nodes are strings or LineBreak tokens.
+    # rendered into lists of strings and LineBreak tokens.
 
     def render_raw_text(self, token: span_token.RawText) -> str:
-        return token.content
+        return [token.content]
 
     def render_strong(self, token: span_token.Strong) -> Tuple:
-        return (token.tag * 2, *map(self.render, token.children), token.tag * 2)
+        return self.embed_span_content(token.tag * 2, token.children)
 
     def render_emphasis(self, token: span_token.Emphasis) -> Tuple:
-        return (token.tag, *map(self.render, token.children), token.tag)
+        return self.embed_span_content(token.tag, token.children)
 
     def render_inline_code(self, token: span_token.InlineCode) -> Tuple:
-        return ('`', *map(self.render, token.children), '`')
+        return self.embed_span_content('`', token.children)
 
     def render_strikethrough(self, token: span_token.Strikethrough) -> Tuple:
-        return ('~~', *map(self.render, token.children), '~~')
+        return self.embed_span_content('~~', token.children)
 
     def render_image(self, token: span_token.Image) -> Tuple:
         return self.render_image_or_link(token, True, token.src)
@@ -153,33 +157,34 @@ class MarkdownRenderer(BaseRenderer):
             if len(token.title) > 0:
                 # "![" description "](" dest_part " " title ")"
                 closer = ')' if token.tag_title == '(' else token.tag_title
-                return (prefix,
-                        *map(self.render, token.children),
-                        "]({} {}{}{})".format(dest_part, token.tag_title, token.title, closer))
+                return self.embed_span_content(
+                    prefix,
+                    token.children,
+                    "]({} {}{}{})".format(dest_part, token.tag_title, token.title, closer))
             else:
                 # "![" description "](" dest_part ")"
-                return (prefix, *map(self.render, token.children), "](" + dest_part + ")")
+                return self.embed_span_content(prefix, token.children, "](" + dest_part + ")")
         elif token.tag_dest_type == "full":
             # "![" description "][" tag_dest "]"
-            return (prefix, *map(self.render, token.children), "][" + token.tag_dest + "]")
+            return self.embed_span_content(prefix, token.children, "][" + token.tag_dest + "]")
         elif token.tag_dest_type == "collapsed":
             # "![" description "][]"
-            return (prefix, *map(self.render, token.children), "][]")
+            return self.embed_span_content(prefix, token.children, "][]")
         else:
             # "![" description "]"
-            return (prefix, *map(self.render, token.children), "]")
+            return self.embed_span_content(prefix, token.children, "]")
 
     def render_auto_link(self, token: span_token.AutoLink) -> Tuple:
-        return ('<', *map(self.render, token.children), '>')
+        return self.embed_span_content('<', token.children, '>')
 
     def render_escape_sequence(self, token: span_token.EscapeSequence) -> str:
-        return "\\" + token.children[0].content
+        return ["\\" + token.children[0].content]
 
     def render_line_break(self, token: span_token.LineBreak) -> span_token.LineBreak:
-        return token
+        return [token]
 
     def render_html_span(self, token: span_token.HTMLSpan) -> str:
-        return token.content
+        return [token.content]
 
     # block tokens
     # rendered into sequences of lines (strings), to be joined by newlines.
