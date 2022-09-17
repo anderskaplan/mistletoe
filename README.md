@@ -57,6 +57,7 @@ in the [contrib][contrib] folder:
 * Jira Markdown (_jira\_renderer.py_)
 * XWiki Syntax (_xwiki20\_renderer.py_)
 * Scheme (_scheme.py_)
+* Markdown (_markdown_renderer.py_). Can be used to render an AST back into Markdown after edits are made.
 
 Installation
 ------------
