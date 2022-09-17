@@ -39,8 +39,13 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_escaped_chars_code_span_and_html_span(self):
-        input = ['misc span tokens:  \\*escaped, not emphasized\\*  `code span` <h1>\n']
+    def test_escaped_chars_and_html_span(self):
+        input = ['misc span tokens:  \\*escaped, not emphasized\\*  <h1>\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_code_span(self):
+        input = ['a) `code span` b) ``trailing space `` c) ` leading and trailing space `\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 

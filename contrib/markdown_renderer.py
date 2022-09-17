@@ -139,7 +139,7 @@ class MarkdownRenderer(BaseRenderer):
         return self.embed_span_content(token.tag, token.children)
 
     def render_inline_code(self, token: span_token.InlineCode) -> Tuple:
-        return self.embed_span_content('`', token.children)
+        return [token.tag, token.tag_content, token.tag]
 
     def render_strikethrough(self, token: span_token.Strikethrough) -> Tuple:
         return self.embed_span_content('~~', token.children)
