@@ -223,10 +223,10 @@ class MarkdownRenderer(BaseRenderer):
         return self.prefix_lines(lines, "    ")
 
     def render_fenced_code_block(self, token: block_token.BlockCode) -> Iterable[str]:
-        lines = ["".join((token.tag, token.info_string))]
+        lines = ["".join((token.tag, token.tag_info_string))]
         lines.extend(token.children[0].content[:-1].split("\n"))
         lines.append(token.tag)
-        return self.prefix_lines(lines, " " * token.indentation)
+        return self.prefix_lines(lines, " " * token.tag_indentation)
 
     def render_list(self, token: block_token.List) -> Iterable[str]:
         return self.block_to_lines(token.children)

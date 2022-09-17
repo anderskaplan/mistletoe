@@ -421,9 +421,9 @@ class CodeFence(BlockToken):
     _open_info = None
     def __init__(self, match):
         lines, open_info = match
-        self.indentation = open_info[0]
+        self.tag_indentation = open_info[0]
         self.tag = open_info[1]
-        self.info_string = open_info[2]
+        self.tag_info_string = open_info[2]
         self.language = span_token.EscapeSequence.strip(open_info[3])
         self.children = (span_token.RawText(''.join(lines)),)
 
