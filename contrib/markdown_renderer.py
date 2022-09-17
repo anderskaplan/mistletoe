@@ -69,6 +69,7 @@ class MarkdownRenderer(BaseRenderer):
     """
     Markdown renderer.
     """
+
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
@@ -76,8 +77,10 @@ class MarkdownRenderer(BaseRenderer):
         self.render_map["CodeFence"] = self.render_fenced_code_block
         self.render_map["LinkReferenceDefinition"] = self.render_link_reference_definition
 
-    def span_to_lines(self, children: Iterable[span_token.SpanToken]) -> Iterable[str]:
-        # render a sequence of span (inline) tokens to a sequence of lines
+    def span_to_lines(self, tokens: Iterable[span_token.SpanToken]) -> Iterable[str]:
+        """
+        Render a sequence of span (inline) tokens into a sequence of lines.
+        """
         def walk_tuple_tree(t):
             if not isinstance(t, tuple):
                 yield t
@@ -87,7 +90,7 @@ class MarkdownRenderer(BaseRenderer):
                         yield inner
 
         current_line = []
-        tree = tuple(map(self.render, children))
+        tree = tuple(map(self.render, tokens))
         for w in walk_tuple_tree(tree):
             if isinstance(w, span_token.LineBreak):
                 current_line.append(getattr(w, "tag", ""))
@@ -98,11 +101,17 @@ class MarkdownRenderer(BaseRenderer):
         if len(current_line) > 0:
             yield "".join(current_line)
 
-    def block_to_lines(self, children: Iterable[block_token.BlockToken]) -> Iterable[str]:
-        # render a sequence of block tokens to a sequence of lines
-        return chain.from_iterable(map(self.render, children))
+    def block_to_lines(self, tokens: Iterable[block_token.BlockToken]) -> Iterable[str]:
+        """
+        Render a sequence of block tokens into a sequence of lines.
+        """
+        return chain.from_iterable(map(self.render, tokens))
 
-    def prefix_lines(self, lines, first_line_prefix, following_line_prefix = None):
+    def prefix_lines(self, lines: Iterable[str], first_line_prefix: str, following_line_prefix: str = None):
+        """
+        Prepend a prefix string to a sequence of lines. The first line may have a different prefix
+        from the following lines.
+        """
         following_line_prefix = following_line_prefix or first_line_prefix
         isFirstLine = True
         for line in lines:
@@ -181,9 +190,13 @@ class MarkdownRenderer(BaseRenderer):
         return "".join(chain.from_iterable(zip(lines, repeat("\n"))))
 
     def render_heading(self, token: block_token.Heading) -> Iterable[str]:
-        content = next(self.span_to_lines(token.children))
-        trailer_part = "".join((" ", token.tag_trailer)) if len(token.tag_trailer) > 0 else ""
-        return ["".join(("#" * token.level, " ", content, trailer_part))]
+        content = next(self.span_to_lines(token.children), "")
+        if len(token.tag_trailer) > 0:
+            content = " ".join((content, token.tag_trailer))
+        if len(content) > 0:
+            return [" ".join(("#" * token.level, content))]
+        else:
+            return ["#" * token.level]
 
     def render_setext_heading(self, token: block_token.SetextHeading) -> Iterable[str]:
         char = "=" if token.level == 1 else "-"
