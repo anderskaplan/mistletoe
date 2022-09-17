@@ -8,9 +8,8 @@ except for nonessential whitespace.
 import os
 import re
 from itertools import chain, repeat
-from string import whitespace
 import sys
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence
 
 from mistletoe import block_token, span_token
 from mistletoe.base_renderer import BaseRenderer
@@ -111,7 +110,7 @@ class MarkdownRenderer(BaseRenderer):
         """
         return chain.from_iterable(map(self.render, tokens))
 
-    def prefix_lines(self, lines: Iterable[str], first_line_prefix: str, following_line_prefix: str = None):
+    def prefix_lines(self, lines: Iterable[str], first_line_prefix: str, following_line_prefix: str = None) -> Iterable[str]:
         """
         Prepend a prefix string to a sequence of lines. The first line may have a different prefix
         from the following lines.
@@ -129,28 +128,28 @@ class MarkdownRenderer(BaseRenderer):
     # span/inline tokens
     # rendered into lists of strings and LineBreak tokens.
 
-    def render_raw_text(self, token: span_token.RawText) -> str:
+    def render_raw_text(self, token: span_token.RawText) -> Sequence:
         return [token.content]
 
-    def render_strong(self, token: span_token.Strong) -> Tuple:
+    def render_strong(self, token: span_token.Strong) -> Sequence:
         return self.embed_span_content(token.tag * 2, token.children)
 
-    def render_emphasis(self, token: span_token.Emphasis) -> Tuple:
+    def render_emphasis(self, token: span_token.Emphasis) -> Sequence:
         return self.embed_span_content(token.tag, token.children)
 
-    def render_inline_code(self, token: span_token.InlineCode) -> Tuple:
+    def render_inline_code(self, token: span_token.InlineCode) -> Sequence:
         return [token.tag, token.tag_content, token.tag]
 
-    def render_strikethrough(self, token: span_token.Strikethrough) -> Tuple:
+    def render_strikethrough(self, token: span_token.Strikethrough) -> Sequence:
         return self.embed_span_content('~~', token.children)
 
-    def render_image(self, token: span_token.Image) -> Tuple:
+    def render_image(self, token: span_token.Image) -> Sequence:
         return self.render_image_or_link(token, True, token.src)
 
-    def render_link(self, token: span_token.Link) -> Tuple:
+    def render_link(self, token: span_token.Link) -> Sequence:
         return self.render_image_or_link(token, False, token.target)
 
-    def render_image_or_link(self, token, isImage, target) -> Tuple:
+    def render_image_or_link(self, token, isImage, target) -> Sequence:
         prefix = "![" if isImage else "["
         if token.tag_dest_type == "uri" or token.tag_dest_type == "angle_uri":
             dest_part = "".join(("<", target, ">")) if token.tag_dest_type == "angle_uri" else target
@@ -174,16 +173,16 @@ class MarkdownRenderer(BaseRenderer):
             # "![" description "]"
             return self.embed_span_content(prefix, token.children, "]")
 
-    def render_auto_link(self, token: span_token.AutoLink) -> Tuple:
+    def render_auto_link(self, token: span_token.AutoLink) -> Sequence:
         return self.embed_span_content('<', token.children, '>')
 
-    def render_escape_sequence(self, token: span_token.EscapeSequence) -> str:
+    def render_escape_sequence(self, token: span_token.EscapeSequence) -> Sequence:
         return ["\\" + token.children[0].content]
 
-    def render_line_break(self, token: span_token.LineBreak) -> span_token.LineBreak:
+    def render_line_break(self, token: span_token.LineBreak) -> Sequence:
         return [token]
 
-    def render_html_span(self, token: span_token.HTMLSpan) -> str:
+    def render_html_span(self, token: span_token.HTMLSpan) -> Sequence:
         return [token.content]
 
     # block tokens
