@@ -194,8 +194,9 @@ class AutoLink(SpanToken):
     This is an inline token with a single child of type RawText.
 
     Attributes:
-        children (iterator): a single RawText node for the link target.
+        children (list): a single RawText node for the link target.
         target (str): link target.
+        mailto (bool): true iff the target looks like an email address, but does not have the "mailto:" prefix.
     """
     repr_attributes = ("target", "mailto")
     pattern = re.compile(r"(?<!\\)(?:\\\\)*<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^ <>]*?|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>")
@@ -230,8 +231,11 @@ class EscapeSequence(SpanToken):
 
 class LineBreak(SpanToken):
     """
-    Line break token. Hard or soft.
+    Line break token: hard or soft.
     This is an inline token without children.
+
+    Attributes:
+        soft (bool): true if this is a soft line break.
     """
     repr_attributes = ("soft",)
     pattern = re.compile(r'( *|\\)\n')

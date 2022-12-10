@@ -137,6 +137,10 @@ class Document(BlockToken):
     """
     Document token.
     This is a container block token. Its children are block tokens - container or leaf ones.
+
+    Attributes:
+        children (list): inner tokens.
+        footnotes (dictionary): link reference definitions.
     """
     def __init__(self, lines):
         if isinstance(lines, str):
@@ -195,6 +199,7 @@ class SetextHeading(BlockToken):
 
     Attributes:
         level (int): heading level.
+        children (list): inner tokens.
     """
     repr_attributes = ("level",)
     def __init__(self, lines):
@@ -217,6 +222,9 @@ class Quote(BlockToken):
     """
     Block quote token. (["> # heading\\n", "> paragraph\\n"])
     This is a container block token. Its children are block tokens - container or leaf ones.
+
+    Attributes:
+        children (list): inner tokens.
     """
     def __init__(self, parse_buffer):
         # span-level tokenizing happens here.
@@ -298,6 +306,9 @@ class Paragraph(BlockToken):
     """
     Paragraph token. (["some\\n", "continuous\\n", "lines\\n"])
     This is a leaf block token. Its children are inline (span) tokens.
+
+    Attributes:
+        children (list): inner tokens.
     """
     setext_pattern = re.compile(r' {0,3}(=|-)+ *$')
     parse_setext = True  # can be disabled by Quote
@@ -515,6 +526,12 @@ class ListItem(BlockToken):
     This is a container block token. Its children are block tokens - container or leaf ones.
 
     Not included in the parsing process, but called by List.
+
+    Attributes:
+        leader (string): a bullet list marker or an ordered list marker.
+        prepend (int): the start position of the content, i.e., the indentation required
+                       for continuation lines.
+        children (list): inner tokens.
     """
     repr_attributes = ("leader", "prepend", "loose")
     pattern = re.compile(r' {0,3}(\d{0,9}[.)]|[+\-*])($|\s+)')
@@ -657,7 +674,7 @@ class Table(BlockToken):
     Attributes:
         header: header row (TableRow).
         column_align (list): align options for each column (default to [None]).
-        children (list): inner tokens (TableRows).
+        children (list): inner tokens.
     """
     repr_attributes = ("column_align",)
     def __init__(self, lines):
@@ -719,6 +736,10 @@ class TableRow(BlockToken):
     This is a container block token. Its children are table cell tokens.
 
     Should only be called by Table.__init__().
+
+    Attributes:
+        row_align (list): align options for each column (default to [None]).
+        children (list): inner tokens.
     """
     repr_attributes = ("row_align",)
     # Note: Python regex requires fixed-length look-behind,
@@ -949,6 +970,9 @@ class ThematicBreak(BlockToken):
     """
     Thematic break token (a.k.a. horizontal rule.)
     This is a leaf block token without children.
+
+    Attributes:
+        none.
     """
     pattern = re.compile(r' {0,3}(?:([-_*])\s*?)(?:\1\s*?){2,}$')
     def __init__(self, lines):
