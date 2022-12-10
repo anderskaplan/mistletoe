@@ -33,9 +33,12 @@ def get_ast(token):
     #   [1]: https://docs.python.org/3/whatsnew/3.6.html
     #   [2]: https://github.com/syntax-tree/mdast
     node['type'] = token.__class__.__name__
-    node.update({k: v for k, v in token.__dict__.items() if not k.startswith('tag')})
-    if 'header' in node:
-        node['header'] = get_ast(node['header'])
-    if 'children' in node:
-        node['children'] = [get_ast(child) for child in node['children']]
+    if 'content' in vars(token):
+        node['content'] = token.content
+    for attrname in token.repr_attributes:
+        node[attrname] = getattr(token, attrname)
+    if 'header' in vars(token):
+        node['header'] = get_ast(token.header)
+    if 'children' in vars(token):
+        node['children'] = [get_ast(child) for child in token.children]
     return node

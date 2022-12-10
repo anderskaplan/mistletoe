@@ -142,6 +142,8 @@ class Document(BlockToken):
         children (list): inner tokens.
         footnotes (dictionary): link reference definitions.
     """
+    repr_attributes = ("footnotes",)
+
     def __init__(self, lines):
         if isinstance(lines, str):
             lines = lines.splitlines(keepends=True)

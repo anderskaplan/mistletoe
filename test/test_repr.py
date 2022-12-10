@@ -14,7 +14,7 @@ class TestRepr(unittest.TestCase):
 
     def test_document(self):
         doc = Document("# Foo")
-        self._check_repr_matches(doc, "block_token.Document with 1 child")
+        self._check_repr_matches(doc, "block_token.Document with 1 child footnotes={}")
 
     def test_heading(self):
         doc = Document("# Foo")
