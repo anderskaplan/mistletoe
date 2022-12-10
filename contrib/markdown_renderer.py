@@ -40,11 +40,19 @@ class LinkReferenceDefinition(block_token.BlockToken):
     This is a leaf block token without children.
 
     Not included in the parsing process, but called by LinkReferenceDefinitionBlock.
+
+    Attributes:
+        label (str): link label, used in link references.
+        dest (str): link target.
+        title (str): link title (default to empty).
+        dest_type (str): "uri" for a plain uri, "angle_uri" for an uri within angle brackets.
+        title_delimiter (str): the delimiter used for the title.
+                               Single quote, double quote, or opening parenthesis.
     """
     repr_attributes = ("label", "dest", "title")
 
     def __init__(self, match):
-        self.label, self.dest, self.title, self.tag_dest_type, self.tag_title = match
+        self.label, self.dest, self.title, self.dest_type, self.title_delimiter = match
 
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
@@ -52,7 +60,7 @@ class LinkReferenceDefinitionBlock(block_token.Footnote):
     A sequence of "link reference definitions".
     This is a container block token. Its children are link reference definition tokens.
 
-    This class inherits from Footnote and modifies the behavior of the constructor so
+    This class inherits from Footnote and modifies the behavior of the constructor, so
     that the tokens are retained in the AST.
     """
     def __new__(cls, *args, **kwargs):
@@ -83,7 +91,7 @@ class MarkdownRenderer(BaseRenderer):
         for rendered_items in map(self.render, tokens):
             for w in rendered_items:
                 if isinstance(w, span_token.LineBreak):
-                    current_line.append(getattr(w, "tag", ""))
+                    current_line.append(w.marker)
                     yield "".join(current_line)
                     current_line = []
                 else:
@@ -93,10 +101,11 @@ class MarkdownRenderer(BaseRenderer):
 
     def embed_span_content(self, leader: str, tokens: Iterable[span_token.SpanToken], trailer: str = None) -> Sequence:
         """
-        Flatten the content tree given by `tokens` into a list. Append a leader and a trailer.
+        Flatten the content tree given by `tokens` into a list and append a leader and a trailer.
+        The trailer defaults to the same as the leader.
 
-        For example: (RawText('text'), Emphasis(RawText('Inner text')))
-        becomes: ['text', '*', 'Inner text', '*']
+        For example: the tokens (RawText('text'), Emphasis(RawText('Inner text')))
+                     becomes [leader, 'text', '*', 'Inner text', '*', trailer]
         """
         content = [leader]
         for rendered_items in map(self.render, tokens):
@@ -183,13 +192,13 @@ class MarkdownRenderer(BaseRenderer):
         return [token.content]
 
     def render_strong(self, token: span_token.Strong) -> Sequence:
-        return self.embed_span_content(token.tag * 2, token.children)
+        return self.embed_span_content(token.delimiter * 2, token.children)
 
     def render_emphasis(self, token: span_token.Emphasis) -> Sequence:
-        return self.embed_span_content(token.tag, token.children)
+        return self.embed_span_content(token.delimiter, token.children)
 
     def render_inline_code(self, token: span_token.InlineCode) -> Sequence:
-        return [token.tag, token.tag_content, token.tag]
+        return [token.delimiter, token.raw_content, token.delimiter]
 
     def render_strikethrough(self, token: span_token.Strikethrough) -> Sequence:
         return self.embed_span_content('~~', token.children)
@@ -202,22 +211,22 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_image_or_link(self, token, isImage, target) -> Sequence:
         prefix = "![" if isImage else "["
-        if token.tag_dest_type == "uri" or token.tag_dest_type == "angle_uri":
-            dest_part = "".join(("<", target, ">")) if token.tag_dest_type == "angle_uri" else target
+        if token.dest_type == "uri" or token.dest_type == "angle_uri":
+            dest_part = "".join(("<", target, ">")) if token.dest_type == "angle_uri" else target
             if len(token.title) > 0:
                 # "![" description "](" dest_part " " title ")"
-                closer = ')' if token.tag_title == '(' else token.tag_title
+                closer = ')' if token.title_delimiter == '(' else token.title_delimiter
                 return self.embed_span_content(
                     prefix,
                     token.children,
-                    "]({} {}{}{})".format(dest_part, token.tag_title, token.title, closer))
+                    "]({} {}{}{})".format(dest_part, token.title_delimiter, token.title, closer))
             else:
                 # "![" description "](" dest_part ")"
                 return self.embed_span_content(prefix, token.children, "](" + dest_part + ")")
-        elif token.tag_dest_type == "full":
-            # "![" description "][" tag_dest "]"
-            return self.embed_span_content(prefix, token.children, "][" + token.tag_dest + "]")
-        elif token.tag_dest_type == "collapsed":
+        elif token.dest_type == "full":
+            # "![" description "][" label "]"
+            return self.embed_span_content(prefix, token.children, "][" + token.label + "]")
+        elif token.dest_type == "collapsed":
             # "![" description "][]"
             return self.embed_span_content(prefix, token.children, "][]")
         else:
@@ -245,18 +254,18 @@ class MarkdownRenderer(BaseRenderer):
         return "".join(chain.from_iterable(zip(lines, repeat("\n"))))
 
     def render_heading(self, token: block_token.Heading) -> Iterable[str]:
+        items = ["#" * token.level]
         content = next(self.span_to_lines(token.children), "")
-        if len(token.tag_trailer) > 0:
-            content = " ".join((content, token.tag_trailer))
         if len(content) > 0:
-            return [" ".join(("#" * token.level, content))]
-        else:
-            return ["#" * token.level]
+            items.append(content)
+        if len(token.closing_sequence) > 0:
+            items.append(token.closing_sequence)
+        return [" ".join(items)]
 
     def render_setext_heading(self, token: block_token.SetextHeading) -> Iterable[str]:
-        char = "=" if token.level == 1 else "-"
         content = list(self.span_to_lines(token.children))
-        content.append(char * token.tag_length)
+        underline_char = "=" if token.level == 1 else "-"
+        content.append(underline_char * token.underline_length)
         return content
 
     def render_quote(self, token: block_token.Quote) -> Iterable[str]:
@@ -273,10 +282,10 @@ class MarkdownRenderer(BaseRenderer):
         return self.prefix_lines(lines, "    ")
 
     def render_fenced_code_block(self, token: block_token.BlockCode) -> Iterable[str]:
-        lines = ["".join((token.tag, token.tag_info_string))]
+        lines = ["".join((token.delimiter, token.info_string))]
         lines.extend(token.children[0].content[:-1].split("\n"))
-        lines.append(token.tag)
-        return self.prefix_lines(lines, " " * token.tag_indentation)
+        lines.append(token.delimiter)
+        return self.prefix_lines(lines, " " * token.indentation)
 
     def render_list(self, token: block_token.List) -> Iterable[str]:
         return self.block_to_lines(token.children)
@@ -288,7 +297,7 @@ class MarkdownRenderer(BaseRenderer):
         return self.prefix_lines(lines, token.leader + " ", " " * (len(token.leader) + 1))
 
     def render_table(self, token: block_token.Table) -> Iterable[str]:
-        # note: column widths are not preserved. they are automatically adjusted to fit the contents.
+        # note: column widths are not preserved; they are automatically adjusted to fit the contents.
         content = [self.table_row_to_text(token.header), []]
         content.extend(self.table_row_to_text(row) for row in token.children)
         col_widths = self.calculate_table_column_widths(content)
@@ -296,7 +305,7 @@ class MarkdownRenderer(BaseRenderer):
         return [self.table_row_to_line(col_text, col_widths, token.column_align) for col_text in content]
 
     def render_thematic_break(self, token: block_token.ThematicBreak) -> Iterable[str]:
-        return [token.tag[:-1]]
+        return [token.line]
 
     def render_html_block(self, token: block_token.HTMLBlock) -> Iterable[str]:
         lines = token.content[:-1].split("\n")
@@ -306,13 +315,13 @@ class MarkdownRenderer(BaseRenderer):
         return self.block_to_lines(token.children)
 
     def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[str]:
-        if token.tag_dest_type == "angle_uri":
+        if token.dest_type == "angle_uri":
             dest_part = "".join(("<", token.dest, ">"))
         else:
             dest_part = token.dest
         if len(token.title) > 0:
-            closer = ')' if token.tag_title == '(' else token.tag_title
-            title_part = " {}{}{}".format(token.tag_title, token.title, closer)
+            closer = ')' if token.title_delimiter == '(' else token.title_delimiter
+            title_part = " {}{}{}".format(token.title_delimiter, token.title, closer)
         else:
             title_part = ""
         content = "[{}]: {}{}".format(token.label, dest_part, title_part)

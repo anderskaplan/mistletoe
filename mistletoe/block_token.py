@@ -165,6 +165,7 @@ class Heading(BlockToken):
     Attributes:
         level (int): heading level.
         children (list): inner tokens.
+        closing_sequence (str): closing sequence of hashes and spaces.
     """
     repr_attributes = ("level",)
     pattern = re.compile(r' {0,3}(#{1,6})(?:\n|\s+?(.*?)(\n|\s+?#+\s*?$))')
@@ -172,7 +173,7 @@ class Heading(BlockToken):
     content = ''
 
     def __init__(self, match):
-        self.level, content, self.tag_trailer = match
+        self.level, content, self.closing_sequence = match
         super().__init__(content, span_token.tokenize_inner)
 
     @classmethod
@@ -184,13 +185,13 @@ class Heading(BlockToken):
         cls.content = (match_obj.group(2) or '').strip()
         if set(cls.content) == {'#'}:
             cls.content = ''
-        cls.tag_trailer = (match_obj.group(3) or '').strip()
+        cls.closing_sequence = (match_obj.group(3) or '').strip()
         return True
 
     @classmethod
     def read(cls, lines):
         next(lines)
-        return cls.level, cls.content, cls.tag_trailer
+        return cls.level, cls.content, cls.closing_sequence
 
 class SetextHeading(BlockToken):
     """
@@ -202,12 +203,14 @@ class SetextHeading(BlockToken):
     Attributes:
         level (int): heading level.
         children (list): inner tokens.
+        underline_length (int): number of characters in the underline.
     """
     repr_attributes = ("level",)
+
     def __init__(self, lines):
         underline = lines.pop().strip()
         self.level = 1 if underline.startswith('=') else 2
-        self.tag_length = len(underline)
+        self.underline_length = len(underline)
         content = '\n'.join([line.strip() for line in lines])
         super().__init__(content, span_token.tokenize_inner)
 
@@ -427,15 +430,19 @@ class CodeFence(BlockToken):
     Attributes:
         children (list): contains a single span_token.RawText token.
         language (str): language of code block (default to empty).
+        indentation (int): indentation of the first line.
+        delimiter (str): delimiter string; three or more backticks or tildes.
+        info_string (str): content on the first line following the delimiter.
     """
     repr_attributes = ("language",)
     pattern = re.compile(r'( {0,3})(`{3,}|~{3,})( *(\S*)[^\n]*)')
     _open_info = None
+
     def __init__(self, match):
         lines, open_info = match
-        self.tag_indentation = open_info[0]
-        self.tag = open_info[1]
-        self.tag_info_string = open_info[2]
+        self.indentation = open_info[0]
+        self.delimiter = open_info[1]
+        self.info_string = open_info[2]
         self.language = span_token.EscapeSequence.strip(open_info[3])
         self.children = (span_token.RawText(''.join(lines)),)
 
@@ -534,6 +541,7 @@ class ListItem(BlockToken):
         prepend (int): the start position of the content, i.e., the indentation required
                        for continuation lines.
         children (list): inner tokens.
+        loose (bool): whether the list is loose.
     """
     repr_attributes = ("leader", "prepend", "loose")
     pattern = re.compile(r' {0,3}(\d{0,9}[.)]|[+\-*])($|\s+)')
@@ -858,8 +866,8 @@ class Footnote(BlockToken):
         line_end = title_end
         while line_end < len(string):
             if string[line_end] == '\n':
-                tag_title = string[title_start] if title_start < title_end else None
-                return line_end + 1, (label, dest, title, dest_type, tag_title)
+                title_delimiter = string[title_start] if title_start < title_end else None
+                return line_end + 1, (label, dest, title, dest_type, title_delimiter)
             elif string[line_end] in whitespace:
                 line_end += 1
             else:
@@ -974,11 +982,12 @@ class ThematicBreak(BlockToken):
     This is a leaf block token without children.
 
     Attributes:
-        none.
+        line (str): textual representation of the thematic break.
     """
     pattern = re.compile(r' {0,3}(?:([-_*])\s*?)(?:\1\s*?){2,}$')
+
     def __init__(self, lines):
-        self.tag = lines[0]
+        self.line = lines[0].strip('\n')
 
     @classmethod
     def start(cls, line):

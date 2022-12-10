@@ -102,9 +102,12 @@ class Strong(SpanToken):
     Strong token. ("**some text**")
     This is an inline token. Its children are inline (span) tokens.
     One of the core tokens.
+
+    Attributes:
+        delimiter (str): delimiter character, either an asterisk or an underscore.
     """
     def __init__(self, match):
-        self.tag = match.tag
+        self.delimiter = match.delimiter
 
 
 class Emphasis(SpanToken):
@@ -112,15 +115,21 @@ class Emphasis(SpanToken):
     Emphasis token. ("*some text*")
     This is an inline token. Its children are inline (span) tokens.
     One of the core tokens.
+
+    Attributes:
+        delimiter (str): delimiter character, either an asterisk or an underscore.
     """
     def __init__(self, match):
-        self.tag = match.tag
+        self.delimiter = match.delimiter
 
 
 class InlineCode(SpanToken):
     """
     Inline code token. ("`some code`")
     This is an inline token with a single child of type RawText.
+
+    Attributes:
+        raw_content (str): the content with all formatting preserved.
     """
     pattern = re.compile(r"(?<!\\|`)(?:\\\\)*(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
     parse_inner = False
@@ -128,8 +137,8 @@ class InlineCode(SpanToken):
 
     def __init__(self, match):
         content = match.group(self.parse_group)
-        self.tag_content = content
-        self.tag = match.group(1)
+        self.raw_content = content
+        self.delimiter = match.group(1)
         content = content.replace('\n', ' ')
         if not content.isspace() and content.startswith(" ") and content.endswith(" "):
             content = content[1:-1]
@@ -159,14 +168,19 @@ class Image(SpanToken):
     Attributes:
         src (str): image source.
         title (str): image title (default to empty).
+        dest_type (str): "uri" for a plain uri, "angle_uri" for an uri within angle brackets;
+                         "full" or "collapsed" or "shortcut" for reference links.
+        label (str): link label, for reference links.
+        title_delimiter (str): the delimiter used for the title.
+                               Single quote, double quote, or opening parenthesis.
     """
     repr_attributes = ("src", "title")
     def __init__(self, match):
         self.src = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
-        self.tag_dest_type = getattr(match, "tag_dest_type", None)
-        self.tag_dest = getattr(match, "tag_dest", None)
-        self.tag_title = getattr(match, "tag_title", None)
+        self.dest_type = getattr(match, "dest_type", None)
+        self.label = getattr(match, "label", None)
+        self.title_delimiter = getattr(match, "title_delimiter", None)
 
 
 class Link(SpanToken):
@@ -178,14 +192,19 @@ class Link(SpanToken):
     Attributes:
         target (str): link target.
         title (str): link title (default to empty).
+        dest_type (str): "uri" for a plain uri, "angle_uri" for an uri within angle brackets;
+                         "full" or "collapsed" or "shortcut" for reference links.
+        label (str): link label, for reference links.
+        title_delimiter (str): the delimiter used for the title.
+                               Single quote, double quote, or opening parenthesis.
     """
     repr_attributes = ("target", "title")
     def __init__(self, match):
         self.target = EscapeSequence.strip(match.group(2).strip())
         self.title = EscapeSequence.strip(match.group(3))
-        self.tag_dest_type = getattr(match, "tag_dest_type", None)
-        self.tag_dest = getattr(match, "tag_dest", None)
-        self.tag_title = getattr(match, "tag_title", None)
+        self.dest_type = getattr(match, "dest_type", None)
+        self.label = getattr(match, "label", None)
+        self.title_delimiter = getattr(match, "title_delimiter", None)
 
 
 class AutoLink(SpanToken):
@@ -235,7 +254,9 @@ class LineBreak(SpanToken):
     This is an inline token without children.
 
     Attributes:
+        content (str): always empty.
         soft (bool): true if this is a soft line break.
+        marker (str): the marker used to identify a hard line break, either double spaces or a backslash.
     """
     repr_attributes = ("soft",)
     pattern = re.compile(r'( *|\\)\n')
@@ -246,8 +267,7 @@ class LineBreak(SpanToken):
         content = match.group(1)
         self.soft = not content.startswith(('  ', '\\'))
         self.content = ''
-        if not self.soft:
-            self.tag = content
+        self.marker = content if not self.soft else ""
 
 
 class RawText(SpanToken):
