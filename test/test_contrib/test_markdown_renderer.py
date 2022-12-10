@@ -7,6 +7,7 @@ from mistletoe.block_token import Document
 class TestMarkdownRenderer(TestCase):
     @staticmethod
     def roundtrip(input):
+        """Parse the given markdown input and render it back to markdown again."""
         with MarkdownRenderer() as renderer:
             rendered = renderer.render(Document(input))
             return rendered
@@ -26,26 +27,36 @@ class TestMarkdownRenderer(TestCase):
         # note: a line break is always added at the end of a paragraph.
         self.assertEqual(rendered, "".join(input) + "\n")
 
-    def test_soft_and_hard_line_breaks(self):
+    def test_line_breaks(self):
         input = ['soft line break\n',
-                 'hard line break\\\n',
-                 'another hard line break  \n',
+                 'hard line break (backslash)\\\n',
+                 'another hard line break (double spaces)  \n',
                  'that\'s all.\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_emphasized_strong_and_strikethrough(self):
-        input = ['_**emphasized and strong**_  ~~strikethrough~~\n']
+    def test_emphasized_and_strong(self):
+        input = ['*emphasized* __strong__ _**emphasized and strong**_\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_escaped_chars_and_html_span(self):
-        input = ['misc span tokens:  \\*escaped, not emphasized\\*  <h1>\n']
+    def test_strikethrough(self):
+        input = ['~~strikethrough~~\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_escaped_chars(self):
+        input = ['\\*escaped, not emphasized\\*\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_html_span(self):
+        input = ['<p>hear ye</p><h1>\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
     def test_code_span(self):
-        input = ['a) `code span` b) ``trailing space `` c) ` leading and trailing space `\n']
+        input = ['a) `code span` b) ``trailing space, double apostrophes `` c) ` leading and trailing space `\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
@@ -64,13 +75,16 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
-    def test_headings(self):
+    def test_atx_headings(self):
         input = ['## atx *heading* ##\n',
                  '# another atx heading, without trailing hashes\n',
                  '###\n',
-                 '^ empty atx heading\n',
-                 '\n',
-                 'setext\n',
+                 '^ empty atx heading\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
+    def test_setext_headings(self):
+        input = ['*setext*\n',
                  'heading!\n',
                  '===============\n']
         rendered = self.roundtrip(input)
