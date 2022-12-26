@@ -209,8 +209,8 @@ class MarkdownRenderer(BaseRenderer):
     def render_link(self, token: span_token.Link) -> Sequence:
         return self.render_image_or_link(token, False, token.target)
 
-    def render_image_or_link(self, token, isImage, target) -> Sequence:
-        prefix = "![" if isImage else "["
+    def render_image_or_link(self, token, is_image, target) -> Sequence:
+        prefix = "![" if is_image else "["
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
             dest_part = "".join(("<", target, ">")) if token.dest_type == "angle_uri" else target
             if len(token.title) > 0:
