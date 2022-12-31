@@ -1010,7 +1010,7 @@ class HTMLBlock(BlockToken):
                                 span_token._closing_tag)) + r')\s*$')
 
     def __init__(self, lines):
-        self.content = ''.join(lines)
+        self.content = ''.join(lines).rstrip('\n')
 
     @classmethod
     def start(cls, line):
@@ -1060,6 +1060,7 @@ class HTMLBlock(BlockToken):
                 if cls._end_cond in line.casefold():
                     break
             elif line.strip() == '':
+                lines.backstep()
                 break
         return line_buffer
 

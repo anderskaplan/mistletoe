@@ -51,7 +51,7 @@ class TestMarkdownRenderer(TestCase):
         self.assertEqual(rendered, "".join(input))
 
     def test_html_span(self):
-        input = ['<p>hear ye</p><h1>\n']
+        input = ['so <p>hear ye</p><h1>\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 

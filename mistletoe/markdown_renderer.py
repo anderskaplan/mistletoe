@@ -308,7 +308,7 @@ class MarkdownRenderer(BaseRenderer):
         return [token.line]
 
     def render_html_block(self, token: block_token.HTMLBlock) -> Iterable[str]:
-        lines = token.content[:-1].split("\n")
+        lines = token.content.split("\n")
         return lines
 
     def render_link_reference_definition_block(self, token: LinkReferenceDefinitionBlock) -> Iterable[str]:
