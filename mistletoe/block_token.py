@@ -410,11 +410,13 @@ class BlockCode(BlockToken):
                 return string[i+1:], True
             elif c == ' ':
                 count += 1
-            else:
+            elif c == '\n':
                 break
+            else:
+                return string, False
             if count == 4:
                 return string[i+1:], True
-        return string[count:], count > 0
+        return string[count:], True
 
 
 class CodeFence(BlockToken):
