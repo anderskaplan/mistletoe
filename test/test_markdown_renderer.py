@@ -131,6 +131,13 @@ class TestMarkdownRenderer(TestCase):
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))
 
+    def test_blank_lines_following_code_block(self):
+        input = ['    code block\n',
+                 '\n',
+                 'paragraph.\n']
+        rendered = self.roundtrip(input)
+        self.assertEqual(rendered, "".join(input))
+
     def test_html_block(self):
         input = ['<h1>some text <img src=\'https://cdn.rawgit.com/\' align=\'right\'></h1>\n',
                  '<br>\n',

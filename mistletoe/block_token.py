@@ -397,29 +397,36 @@ class BlockCode(BlockToken):
     @classmethod
     def read(cls, lines):
         line_buffer = []
+        trailing_blank_lines = 0
         for line in lines:
-            if line.strip() == '':
-                line_buffer.append(line.lstrip(' ') if len(line) < 5 else line[4:])
+            if line == '\n':
+                line_buffer.append(line)
+                trailing_blank_lines += 1
                 continue
-            if not line.replace('\t', '    ', 1).startswith('    '):
+            stripped, is_valid = cls.strip_leader(line)
+            if not is_valid:
                 lines.backstep()
                 break
-            line_buffer.append(cls.strip(line))
+            line_buffer.append(stripped)
+            trailing_blank_lines = 0
+        for _ in range(trailing_blank_lines):
+            line_buffer.pop()
+            lines.backstep()
         return line_buffer
 
     @staticmethod
-    def strip(string):
+    def strip_leader(string):
         count = 0
         for i, c in enumerate(string):
             if c == '\t':
-                return string[i+1:]
+                return string[i+1:], True
             elif c == ' ':
                 count += 1
             else:
                 break
             if count == 4:
-                return string[i+1:]
-        return string
+                return string[i+1:], True
+        return string[count:], count > 0
 
 
 class CodeFence(BlockToken):
