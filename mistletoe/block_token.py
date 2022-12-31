@@ -22,15 +22,6 @@ __all__ = ['BlockCode', 'Heading', 'Quote', 'CodeFence', 'ThematicBreak',
            'List', 'Table', 'Footnote', 'Paragraph']
 
 
-"""
-Stores a reference to the current document token.
-
-When parsing, footnote entries will be stored in the document by
-accessing this pointer.
-"""
-_root_node = None
-
-
 def tokenize(lines):
     """
     A wrapper around block_tokenizer.tokenize. Pass in all block-level
@@ -149,12 +140,9 @@ class Document(BlockToken):
             lines = lines.splitlines(keepends=True)
         lines = [line if line.endswith('\n') else '{}\n'.format(line) for line in lines]
         self.footnotes = {}
-        global _root_node
-        _root_node = self
-        span_token._root_node = self
+        token._root_node = self
         self.children = tokenize(lines)
-        span_token._root_node = None
-        _root_node = None
+        token._root_node = None
 
 
 class Heading(BlockToken):
@@ -459,7 +447,9 @@ class CodeFence(BlockToken):
         if not match_obj:
             return False
         prepend, leader, info_string, lang = match_obj.groups()
-        if leader[0] in info_string:
+        # info strings for backtick code blocks may not contain backticks,
+        # but info strings for tilde code blocks may contain both tildes and backticks.
+        if leader[0] == '`' and '`' in info_string:
             return False
         cls._open_info = len(prepend), leader, info_string, lang
         return True
@@ -821,7 +811,7 @@ class Footnote(BlockToken):
                 break
             offset, match = match_info
             matches.append(match)
-        cls.append_footnotes(matches, _root_node)
+        cls.append_footnotes(matches, token._root_node)
         return matches or None
 
     @classmethod
@@ -923,7 +913,7 @@ class Footnote(BlockToken):
             for i, c in enumerate(string[offset+1:], start=offset+1):
                 if c == '\\' and not escaped:
                     escaped = True
-                elif c == ' ' or c == '\n' or (c == '<' and not escaped):
+                elif c == '\n' or (c == '<' and not escaped):
                     return None
                 elif c == '>' and not escaped:
                     return offset, i+1, string[offset+1:i]
@@ -1014,7 +1004,7 @@ class HTMLBlock(BlockToken):
         content (str): the raw HTML content.
     """
     _end_cond = None
-    multiblock = re.compile(r'<(script|pre|style)[ >\n]')
+    multiblock = re.compile(r'<(pre|script|style|textarea)[ >\n]')
     predefined = re.compile(r'<\/?(.+?)(?:\/?>|[ \n])')
     custom_tag = re.compile(r'(?:' + '|'.join((span_token._open_tag,
                                 span_token._closing_tag)) + r')\s*$')
@@ -1027,7 +1017,7 @@ class HTMLBlock(BlockToken):
         stripped = line.lstrip()
         if len(line) - len(stripped) >= 4:
             return False
-        # rule 1: <pre>, <script> or <style> tags, allow newlines in block
+        # rule 1: HTML tags designed to contain literal content, allow newlines in block
         match_obj = cls.multiblock.match(stripped)
         if match_obj is not None:
             cls._end_cond = '</{}>'.format(match_obj.group(1).casefold())

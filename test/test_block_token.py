@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, call
 from mistletoe import block_token, span_token
-from mistletoe.block_tokenizer import FileWrapper
 
 
 class TestToken(unittest.TestCase):
@@ -113,6 +112,11 @@ class TestCodeFence(TestToken):
         lines = ['```\n', 'hey']
         arg = 'hey'
         self._test_match(block_token.CodeFence, lines, arg, language='')
+
+    def test_code_fence_with_backticks_and_tildes_in_the_info_string(self):
+        lines = ['~~~ aa ``` ~~~\n', 'foo\n', '~~~\n']
+        arg = 'foo\n'
+        self._test_match(block_token.CodeFence, lines, arg, language='aa')
 
 
 class TestBlockCode(TestToken):
@@ -415,6 +419,22 @@ class TestFootnote(unittest.TestCase):
         self.assertEqual(token.footnotes, {"key 1": ("value1", "title1"),
                                            "key 2": ("value2", "title2")})
 
+    def test_parse_with_space_in_every_part(self):
+        lines = ['[Foo bar]:\n',
+                 '<my url>\n',
+                 '\'my title\'\n']
+        token = block_token.Document(lines)
+        self.assertEqual(set(token.footnotes.values()), set({ ("my url", "my title") }))
+
+    def test_parse_title_must_be_separated_from_link_destination(self):
+        lines = ['[foo]: <bar> (baz)\n']
+        token = block_token.Document(lines)
+        self.assertEqual(set(token.footnotes.values()), set({ ("bar", "baz") }))
+
+        lines = ['[foo]: <bar>(baz)\n']
+        token = block_token.Document(lines)
+        self.assertEqual(len(token.footnotes), 0)
+
     # this tests an edge case, it shouldn't occur in normal documents:
     # "[key 2]" is part of the paragraph above it, because a link reference definitions cannot interrupt a paragraph.
     def test_footnote_followed_by_paragraph(self):
@@ -514,3 +534,22 @@ class TestContains(unittest.TestCase):
         self.assertTrue('heading' in token)
         self.assertTrue('code' in token)
         self.assertFalse('foo' in token)
+
+
+class TestHTMLBlock(unittest.TestCase):
+    def setUp(self):
+        block_token.add_token(block_token.HTMLBlock)
+        self.addCleanup(block_token.reset_tokens)
+
+    def test_textarea_block_may_contain_blank_lines(self):
+        lines = ['<textarea>\n',
+                 '\n',
+                 '*foo*\n',
+                 '\n',
+                 '_bar_\n',
+                 '\n',
+                 '</textarea>\n']
+        document = block_token.Document(lines)
+        tokens = document.children
+        self.assertEqual(1, len(tokens))
+        self.assertIsInstance(tokens[0], block_token.HTMLBlock)
