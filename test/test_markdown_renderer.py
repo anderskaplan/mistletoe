@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from mistletoe.contrib.markdown_renderer import MarkdownRenderer
+from mistletoe.markdown_renderer import MarkdownRenderer
 from mistletoe.block_token import Document
 
 
