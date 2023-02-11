@@ -90,10 +90,13 @@ class MarkdownRenderer(BaseRenderer):
         current_line = []
         for rendered_items in map(self.render, tokens):
             for w in rendered_items:
-                if isinstance(w, span_token.LineBreak):
-                    current_line.append(w.marker)
+                if "\n" in w:
+                    lines = w.split("\n")
+                    current_line.append(lines[0])
                     yield "".join(current_line)
-                    current_line = []
+                    for inner_line in lines[1:-2]:
+                        yield inner_line
+                    current_line = [lines[-1]]
                 else:
                     current_line.append(w)
         if len(current_line) > 0:
@@ -186,7 +189,7 @@ class MarkdownRenderer(BaseRenderer):
         return "".join(("| ", " | ".join(padded_text), " |"))
 
     # span/inline tokens
-    # rendered into lists of strings and LineBreak tokens.
+    # rendered into lists of strings.
 
     def render_raw_text(self, token: span_token.RawText) -> Sequence:
         return [token.content]
@@ -240,7 +243,7 @@ class MarkdownRenderer(BaseRenderer):
         return ["\\" + token.children[0].content]
 
     def render_line_break(self, token: span_token.LineBreak) -> Sequence:
-        return [token]
+        return [token.marker + "\n"]
 
     def render_html_span(self, token: span_token.HTMLSpan) -> Sequence:
         return [token.content]

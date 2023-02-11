@@ -253,7 +253,7 @@ class LineBreak(SpanToken):
     Attributes:
         content (str): always empty.
         soft (bool): true if this is a soft line break.
-        marker (str): the marker used to identify a hard line break, either double spaces or a backslash.
+        marker (str): the marker used to identify a hard line break, either (at least) double spaces or a backslash.
     """
     repr_attributes = ("soft",)
     pattern = re.compile(r'( *|\\)\n')
@@ -261,10 +261,9 @@ class LineBreak(SpanToken):
     parse_group = 0
 
     def __init__(self, match):
-        content = match.group(1)
-        self.soft = not content.startswith(('  ', '\\'))
-        self.content = ''
-        self.marker = content if not self.soft else ""
+        self.content = ""
+        self.marker = match.group(1)
+        self.soft = not self.marker.startswith(('  ', '\\'))
 
 
 class RawText(SpanToken):

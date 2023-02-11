@@ -166,8 +166,19 @@ class TestRawText(unittest.TestCase):
 
 class TestLineBreak(unittest.TestCase):
     def test_parse(self):
+        token, = span_token.tokenize_inner('\n')
+        self.assertIsInstance(token, span_token.LineBreak)
+        self.assertTrue(token.soft)
+
+    def test_parse_hard_break_double_blanks(self):
         token, = span_token.tokenize_inner('  \n')
         self.assertIsInstance(token, span_token.LineBreak)
+        self.assertFalse(token.soft)
+
+    def test_parse_hard_break_backslash(self):
+        _, token, = span_token.tokenize_inner(' \\\n')
+        self.assertIsInstance(token, span_token.LineBreak)
+        self.assertFalse(token.soft)
 
 
 class TestContains(unittest.TestCase):
