@@ -31,6 +31,7 @@ class TestMarkdownRenderer(TestCase):
         input = ['soft line break\n',
                  'hard line break (backslash)\\\n',
                  'another hard line break (double spaces)  \n',
+                 'yet another hard line break    \n',
                  'that\'s all.\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))

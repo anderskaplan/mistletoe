@@ -4,6 +4,7 @@ Built-in span-level token classes.
 
 import html
 import re
+from typing import Iterable
 import mistletoe.span_tokenizer as tokenizer
 from mistletoe import core_tokens, token
 
@@ -79,6 +80,24 @@ class SpanToken(token.Token):
     def find(cls, string):
         return cls.pattern.finditer(string)
 
+    def flatten(self) -> Iterable[str]:
+        """
+        Return a flattened string representation of the tree of span tokens rooted at this token.
+        Overridden in subclasses.
+        """
+        yield from ()
+
+    @classmethod
+    def embed_span(cls, leader: str, tokens: Iterable['SpanToken'], trailer: str = None) -> Iterable[str]:
+        """
+        Flatten `tokens` and embed within a leader and a trailer.
+        The trailer defaults to the same as the leader.
+        """
+        yield leader
+        for token in tokens:
+            yield from token.flatten()
+        yield trailer or leader
+
 
 class CoreTokens(SpanToken):
     """
@@ -106,6 +125,9 @@ class Strong(SpanToken):
     def __init__(self, match):
         self.delimiter = match.delimiter
 
+    def flatten(self) -> Iterable[str]:
+        return self.embed_span(self.delimiter * 2, self.children)
+
 
 class Emphasis(SpanToken):
     """
@@ -118,6 +140,9 @@ class Emphasis(SpanToken):
     """
     def __init__(self, match):
         self.delimiter = match.delimiter
+
+    def flatten(self) -> Iterable[str]:
+        return self.embed_span(self.delimiter, self.children)
 
 
 class InlineCode(SpanToken):
@@ -147,6 +172,9 @@ class InlineCode(SpanToken):
         core_tokens._code_matches = []
         return matches
 
+    def flatten(self) -> Iterable[str]:
+        yield from (self.delimiter, self.raw_content, self.delimiter)
+
 
 class Strikethrough(SpanToken):
     """
@@ -154,6 +182,9 @@ class Strikethrough(SpanToken):
     This is an inline token. Its children are inline (span) tokens.
     """
     pattern = re.compile(r"(?<!\\)(?:\\\\)*~~(.+?)~~", re.DOTALL)
+
+    def flatten(self) -> Iterable[str]:
+        return self.embed_span('~~', self.children)
 
 
 class Image(SpanToken):
@@ -179,6 +210,16 @@ class Image(SpanToken):
         self.label = getattr(match, "label", None)
         self.title_delimiter = getattr(match, "title_delimiter", None)
 
+    def flatten(self) -> Iterable[str]:
+        return Link.flatten_inner(
+            self.src,
+            self.title,
+            self.dest_type,
+            self.label,
+            self.title_delimiter,
+            self.children,
+            is_image=True,
+        )
 
 class Link(SpanToken):
     """
@@ -203,6 +244,41 @@ class Link(SpanToken):
         self.label = getattr(match, "label", None)
         self.title_delimiter = getattr(match, "title_delimiter", None)
 
+    def flatten(self) -> Iterable[str]:
+        return self.flatten_inner(
+            self.target,
+            self.title,
+            self.dest_type,
+            self.label,
+            self.title_delimiter,
+            self.children
+        )
+
+    @classmethod
+    def flatten_inner(cls, target, title, dest_type, label, title_delimiter, children, is_image=False) -> Iterable[str]:
+        prefix = "![" if is_image else "["
+        if dest_type == "uri" or dest_type == "angle_uri":
+            dest_part = "".join(("<", target, ">")) if dest_type == "angle_uri" else target
+            if title:
+                # "![" description "](" dest_part " " title ")"
+                closer = ')' if title_delimiter == '(' else title_delimiter
+                return cls.embed_span(
+                    prefix,
+                    children,
+                    "]({} {}{}{})".format(dest_part, title_delimiter, title, closer))
+            else:
+                # "![" description "](" dest_part ")"
+                return cls.embed_span(prefix, children, "](" + dest_part + ")")
+        elif dest_type == "full":
+            # "![" description "][" label "]"
+            return cls.embed_span(prefix, children, "][" + label + "]")
+        elif dest_type == "collapsed":
+            # "![" description "][]"
+            return cls.embed_span(prefix, children, "][]")
+        else:
+            # "![" description "]"
+            return cls.embed_span(prefix, children, "]")
+
 
 class AutoLink(SpanToken):
     """
@@ -224,6 +300,9 @@ class AutoLink(SpanToken):
         self.target = content
         self.mailto = '@' in self.target and 'mailto' not in self.target.casefold()
 
+    def flatten(self) -> Iterable[str]:
+        return self.embed_span("<", self.children, ">")
+
 
 class EscapeSequence(SpanToken):
     """
@@ -243,6 +322,9 @@ class EscapeSequence(SpanToken):
     @classmethod
     def strip(cls, string):
         return html.unescape(cls.pattern.sub(r'\1', string))
+
+    def flatten(self) -> Iterable[str]:
+        yield "\\" + self.children[0].content
 
 
 class LineBreak(SpanToken):
@@ -265,6 +347,9 @@ class LineBreak(SpanToken):
         self.marker = match.group(1)
         self.soft = not self.marker.startswith(('  ', '\\'))
 
+    def flatten(self) -> Iterable[str]:
+        yield self.marker + "\n"
+
 
 class RawText(SpanToken):
     """
@@ -276,6 +361,9 @@ class RawText(SpanToken):
     """
     def __init__(self, content):
         self.content = content
+
+    def flatten(self) -> Iterable[str]:
+        yield self.content
 
 
 _tags = {'address', 'article', 'aside', 'base', 'basefont', 'blockquote',
@@ -312,6 +400,9 @@ class HTMLSpan(SpanToken):
                                    re.DOTALL)
     parse_inner = False
     parse_group = 0
+
+    def flatten(self) -> Iterable[str]:
+        yield self.content
 
 
 # Note: The following XWiki tokens are based on the XWiki Syntax 2.0 (or above; 1.0 was deprecated years ago already).

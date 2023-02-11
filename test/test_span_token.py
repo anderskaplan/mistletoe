@@ -203,3 +203,21 @@ class TestHTMLSpan(unittest.TestCase):
         tokens = span_token.tokenize_inner('< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />')
         for t in tokens:
             self.assertNotIsInstance(t, span_token.HTMLSpan)
+
+
+class TestFlattening(unittest.TestCase):
+    def test_raw_text(self):
+        text = 'some text'
+        token = span_token.RawText(text)
+        flattened = list(token.flatten())
+        self.assertEqual(flattened, [text])
+
+    def test_emphasis(self):
+        token, = span_token.tokenize_inner('*some text*')
+        flattened = list(token.flatten())
+        self.assertEqual(flattened, ['*', 'some text', '*'])
+
+    def test_nested_emphasis(self):
+        token, = span_token.tokenize_inner('*some _nested_ text*')
+        flattened = list(token.flatten())
+        self.assertEqual(flattened, ['*', 'some ', '_', 'nested', '_', ' text', '*'])
