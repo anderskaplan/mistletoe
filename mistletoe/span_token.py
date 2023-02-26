@@ -261,7 +261,7 @@ class Link(SpanToken):
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
             # "![" description "](" dest_part [" " title] ")"
             yield Particle("(", token)
-            dest_part = "".join(("<", target, ">")) if token.dest_type == "angle_uri" else target
+            dest_part = "<" + target + ">" if token.dest_type == "angle_uri" else target
             yield Particle(dest_part, token, "dest_part")
             if token.title:
                 yield from (

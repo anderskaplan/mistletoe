@@ -163,7 +163,8 @@ class TestMarkdownRenderer(TestCase):
                  'and [a *second* link][label] as well\n',
                  'shortcut [label] & collapsed [label][]\n',
                  '\n',
-                 '[label-2]: <https://libraries.io/> \'title\'\n',
+                 '[label-2]: <https://libraries.io/> \'title\n',
+                 'with line break\'\n',
                  '[label-not-referred-to]: https://foo (title)\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(input))

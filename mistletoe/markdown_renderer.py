@@ -34,10 +34,9 @@ class BlankLine(block_token.BlockToken):
         return [next(lines)]
 
 
-class LinkReferenceDefinition(block_token.BlockToken):
+class LinkReferenceDefinition(span_token.SpanToken):
     """
     Link reference definition. ([label]: dest "title")
-    This is a leaf block token without children.
 
     Not included in the parsing process, but called by LinkReferenceDefinitionBlock.
 
@@ -53,6 +52,21 @@ class LinkReferenceDefinition(block_token.BlockToken):
 
     def __init__(self, match):
         self.label, self.dest, self.title, self.dest_type, self.title_delimiter = match
+
+    def flatten(self) -> Iterable[span_token.Particle]:
+        yield from (
+            span_token.Particle("[", self),
+            span_token.Particle(self.label, self, "label"),
+            span_token.Particle("]: ", self),
+            span_token.Particle("<" + self.dest + ">" if self.dest_type == "angle_uri" else self.dest, self),
+        )
+        if self.title:
+            yield from (
+                span_token.Particle(" ", self),
+                span_token.Particle(self.title_delimiter, self),
+                span_token.Particle(self.title, self),
+                span_token.Particle(')' if self.title_delimiter == '(' else self.title_delimiter, self),
+            )
 
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
@@ -151,20 +165,9 @@ class MarkdownRenderer(BaseRenderer):
         return lines
 
     def render_link_reference_definition_block(self, token: LinkReferenceDefinitionBlock) -> Iterable[str]:
-        return self.block_to_lines(token.children)
-
-    def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[str]:
-        if token.dest_type == "angle_uri":
-            dest_part = "".join(("<", token.dest, ">"))
-        else:
-            dest_part = token.dest
-        if len(token.title) > 0:
-            closer = ')' if token.title_delimiter == '(' else token.title_delimiter
-            title_part = " {}{}{}".format(token.title_delimiter, token.title, closer)
-        else:
-            title_part = ""
-        content = "[{}]: {}{}".format(token.label, dest_part, title_part)
-        return [content]
+        # each link reference definition starts on a new line
+        for child in token.children:
+            yield from self.span_to_lines([child])
 
     def render_blank_line(self, token: BlankLine) -> Iterable[str]:
         return [""]
@@ -173,6 +176,9 @@ class MarkdownRenderer(BaseRenderer):
     # note: not used -- all rendering of span tokens is done in span_to_lines.
 
     def render_html_span(self, token: span_token.HTMLSpan) -> Sequence:
+        return self.render_inner(token)
+
+    def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[str]:
         return self.render_inner(token)
 
     # helper methods
@@ -200,7 +206,7 @@ class MarkdownRenderer(BaseRenderer):
                     current_line = [lines[-1]]
                 else:
                     current_line.append(particle.text)
-        if len(current_line) > 0:
+        if current_line:
             yield "".join(current_line)
 
     @classmethod
