@@ -137,8 +137,8 @@ class MarkdownRenderer(BaseRenderer):
         yield underline_char * token.underline_length
 
     def render_quote(self, token: block_token.Quote, max_line_length: int = None) -> Iterable[str]:
-        max_child_line_width = max_line_length - 2 if max_line_length else None
-        lines = self.blocks_to_lines(token.children, max_line_length=max_child_line_width)
+        max_child_line_length = max_line_length - 2 if max_line_length else None
+        lines = self.blocks_to_lines(token.children, max_line_length=max_child_line_length)
         return self.prefix_lines(lines or [""], "> ")
 
     def render_paragraph(self, token: block_token.Paragraph, max_line_length: int = None) -> Iterable[str]:
@@ -161,8 +161,8 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_list_item(self, token: block_token.ListItem, max_line_length: int = None) -> Iterable[str]:
         indentation = len(token.leader) + 1
-        max_child_line_width = max_line_length - indentation if max_line_length else None
-        lines = self.blocks_to_lines(token.children, max_line_length=max_child_line_width)
+        max_child_line_length = max_line_length - indentation if max_line_length else None
+        lines = self.blocks_to_lines(token.children, max_line_length=max_child_line_length)
         return self.prefix_lines(list(lines) or [""], token.leader + " ", " " * indentation)
 
     def render_table(self, token: block_token.Table, max_line_length: int = None) -> Iterable[str]:
@@ -298,7 +298,7 @@ class MarkdownRenderer(BaseRenderer):
         """
         Render each table cell on a table row to text.
         """
-        return [next(cls.span_to_lines(col.children)) for col in row.children]
+        return [next(cls.span_to_lines(col.children), "") for col in row.children]
 
     @classmethod
     def calculate_table_column_widths(cls, col_text) -> Sequence[int]:
