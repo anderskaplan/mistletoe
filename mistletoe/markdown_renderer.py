@@ -92,11 +92,12 @@ class MarkdownRenderer(BaseRenderer):
         return "".join(chain.from_iterable(zip(lines, repeat("\n"))))
 
     def render_heading(self, token: block_token.Heading) -> Iterable[str]:
+        # always a single line
         items = ["#" * token.level]
         content = next(self.span_to_lines(token.children), "")
-        if len(content) > 0:
+        if content:
             items.append(content)
-        if len(token.closing_sequence) > 0:
+        if token.closing_sequence:
             items.append(token.closing_sequence)
         return [" ".join(items)]
 
@@ -108,7 +109,7 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_quote(self, token: block_token.Quote) -> Iterable[str]:
         lines = list(self.block_to_lines(token.children))
-        if len(lines) == 0:
+        if not lines:
             lines = [""]
         return self.prefix_lines(lines, "> ")
 
@@ -130,7 +131,7 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_list_item(self, token: block_token.ListItem) -> Iterable[str]:
         lines = list(self.block_to_lines(token.children))
-        if len(lines) == 0:
+        if not lines:
             lines = [""]
         return self.prefix_lines(lines, token.leader + " ", " " * (len(token.leader) + 1))
 

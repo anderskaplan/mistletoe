@@ -104,8 +104,36 @@ class TestFormatting(unittest.TestCase):
         )
 
     def test_wordwrap_paragraph_with_link(self):
-        # wide & narrow. title with newline
-        assert False
+        # given a paragraph with a link
+        paragraph = block_token.Paragraph(
+            [
+                "A paragraph\n",
+                "containing [a link](<url%20> 'which\n",
+                "has a rather long title\n",
+                "spanning multiple lines.')\n",
+            ]
+        )
+
+        # when reflowing with the max line length set very short
+        lines = wordwrap(paragraph, max_line_length=1)
+
+        # then the content is reflowed to make the lines as short as possible (but not shorter)
+        assert lines == (
+            "A\n"
+            "paragraph\n"
+            "containing\n"
+            "[a\n"
+            "link](<url%20>\n"
+            "'which\n"
+            "has\n"
+            "a\n"
+            "rather\n"
+            "long\n"
+            "title\n"
+            "spanning\n"
+            "multiple\n"
+            "lines.')"
+        )
 
     def test_wordwrap_text_in_setext_heading(self):
         document = block_token.Document(
@@ -138,4 +166,8 @@ class TestFormatting(unittest.TestCase):
         assert False
 
     def test_wordwrap_ignore_tables(self):
+        assert False
+
+    def test_wordwrap_link_reference_definition(self):
+        # link ref with long label and long title
         assert False

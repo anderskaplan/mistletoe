@@ -89,7 +89,7 @@ class SpanToken(token.Token):
 
     def flatten(self) -> Iterable[Particle]:
         """
-        Return a flattened representation of the tree of span tokens rooted at this token.
+        Returns a flattened sequence of the tree of span tokens rooted at this token.
         Overridden in subclasses.
         """
         yield from ()
@@ -97,7 +97,7 @@ class SpanToken(token.Token):
     @classmethod
     def embed_span(cls, leader: Particle, tokens: Iterable['SpanToken'], trailer: Particle = None) -> Iterable[Particle]:
         """
-        Flatten `tokens` and embed within a leader and a trailer.
+        Flattens `tokens` and embeds within a leader and a trailer.
         The trailer defaults to the same as the leader.
         """
         yield leader
