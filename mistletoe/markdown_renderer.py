@@ -91,6 +91,8 @@ class MarkdownRenderer(BaseRenderer):
     Markdown renderer.
     """
 
+    _whitespace = re.compile(r"\s+")
+
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
@@ -201,7 +203,7 @@ class MarkdownRenderer(BaseRenderer):
         Renders a sequence of block tokens into a sequence of lines.
         """
         for token in tokens:
-            yield from self.render_map[token.__class__.__name__](token)
+            yield from self.render_map[token.__class__.__name__](token, max_line_length=max_line_length)
 
     @classmethod
     def span_to_lines(cls, tokens: Iterable[span_token.SpanToken], max_line_length: int = None) -> Iterable[str]:
@@ -209,8 +211,10 @@ class MarkdownRenderer(BaseRenderer):
         Renders a sequence of span (inline) tokens into a sequence of lines.
         """
         current_line = ""
-        for token in tokens:
-            for particle in token.flatten():
+        particles = chain.from_iterable([token.flatten() for token in tokens])
+        if not max_line_length:
+            # plain rendering: merge all particles and split on newlines
+            for particle in particles:
                 if "\n" in particle.text:
                     lines = particle.text.split("\n")
                     yield current_line + lines[0]
@@ -219,8 +223,59 @@ class MarkdownRenderer(BaseRenderer):
                     current_line = lines[-1]
                 else:
                     current_line += particle.text
+        else:
+            # render with word wrapping
+            for word in cls.make_words(particles):
+                if word == "\n":
+                    # hard line break
+                    yield current_line
+                    current_line = ""
+                    continue
+
+                if not current_line:
+                    # first word on an empty line: accept and continue
+                    current_line = word
+                    continue
+
+                # try to fit the word on the current line.
+                # if it doesn't fit, flush the line and start on the next
+                test = current_line + " " + word
+                if len(test) <= max_line_length:
+                    current_line = test
+                else:
+                    yield current_line
+                    current_line = word
+
         if current_line:
             yield current_line
+
+    @classmethod
+    def make_words(cls, particles: Iterable[span_token.Particle]) -> Iterable[str]:
+        """
+        Aggregates and splits a sequence of Particles into words, which do not contain breakable spaces or line breaks.
+        The exception is hard line breaks which are represented by a single newline character.
+        """
+        word = ""
+        for particle in particles:
+            if isinstance(particle.token, span_token.InlineCode):
+                word += particle.text
+            elif isinstance(particle.token, span_token.LineBreak) and not particle.token.soft:
+                yield from (word + particle.text[:-1], "\n")
+                word = ""
+            else:
+                first = True
+                for item in cls._whitespace.split(particle.text):
+                    if first:
+                        word += item
+                        first = False
+                    else:
+                        if word:
+                            yield word
+                        word = item
+
+        if word:
+            yield word
+
 
     @classmethod
     def prefix_lines(cls, lines: Iterable[str], first_line_prefix: str, following_line_prefix: str = None) -> Iterable[str]:
@@ -229,11 +284,11 @@ class MarkdownRenderer(BaseRenderer):
         from the following lines.
         """
         following_line_prefix = following_line_prefix or first_line_prefix
-        isFirstLine = True
+        is_first_line = True
         for line in lines:
-            if isFirstLine:
+            if is_first_line:
                 l = first_line_prefix + line
-                isFirstLine = False
+                is_first_line = False
             else:
                 l = following_line_prefix + line
             yield l if not l.isspace() else ""

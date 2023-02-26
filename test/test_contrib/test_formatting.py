@@ -16,7 +16,7 @@ class TestFormatting(unittest.TestCase):
             ]
         )
 
-        # when reflowing with the max line length set to 30
+        # when reflowing with the max line length set medium long
         with MarkdownRenderer() as renderer:
             lines = renderer.render(paragraph, max_line_length=30)
 
@@ -24,7 +24,7 @@ class TestFormatting(unittest.TestCase):
         assert lines == (
             "A short paragraph without any\n"
             "long words or hard line\n"
-            "breaks."
+            "breaks.\n"
         )
 
         # when reflowing with the max line length set lower than the longest word: "paragraph", 9 chars
@@ -40,7 +40,7 @@ class TestFormatting(unittest.TestCase):
             "words or\n"
             "hard\n"
             "line\n"
-            "breaks."
+            "breaks.\n"
         )
 
     def test_wordwrap_paragraph_with_emphasized_words(self):
@@ -60,7 +60,7 @@ class TestFormatting(unittest.TestCase):
             "*emphasized*\n"
             "_nested\n"
             "*emphasis*\n"
-            "too_"
+            "too_\n"
         )
 
     def test_wordwrap_paragraph_with_inline_code(self):
@@ -83,7 +83,7 @@ class TestFormatting(unittest.TestCase):
             "`inline code`\n"
             "and\n"
             "``inline with\n"
-            "line break``"
+            "line break``\n"
         )
 
     def test_wordwrap_paragraph_with_hard_line_breaks(self):
@@ -97,7 +97,7 @@ class TestFormatting(unittest.TestCase):
             ]
         )
 
-        # when reflowing with the max line length set medium high
+        # when reflowing with the max line length set normal long
         with MarkdownRenderer() as renderer:
             lines = renderer.render(paragraph, max_line_length=80)
 
@@ -105,7 +105,7 @@ class TestFormatting(unittest.TestCase):
         assert lines == (
             "A short paragraph  \n"
             "without any\\\n"
-            "very long words."
+            "very long words.\n"
         )
 
     def test_wordwrap_paragraph_with_link(self):
@@ -138,7 +138,7 @@ class TestFormatting(unittest.TestCase):
             "title\n"
             "spanning\n"
             "multiple\n"
-            "lines.')"
+            "lines.')\n"
         )
 
     def test_wordwrap_text_in_setext_heading(self):
@@ -153,7 +153,7 @@ class TestFormatting(unittest.TestCase):
             ]
         )
 
-        # when reflowing with the max line length set medium high
+        # when reflowing with the max line length set medium long
         with MarkdownRenderer() as renderer:
             lines = renderer.render(document, max_line_length=30)
 
@@ -162,7 +162,7 @@ class TestFormatting(unittest.TestCase):
             "A setext heading without any\n"
             "long words or hard line\n"
             "breaks.\n"
-            "====="
+            "=====\n"
         )
 
     def test_wordwrap_paragraph_in_list(self):
