@@ -63,10 +63,11 @@ def reset_tokens():
 
 
 class Particle:
-    def __init__(self, text: str, token: 'SpanToken', tag: str = None):
+    def __init__(self, text: str, token: 'SpanToken', tag: str = None, wordwrap: bool = False):
         self.text = text
         self.token = token
         self.tag = tag
+        self.wordwrap = wordwrap
 
 
 class SpanToken(token.Token):
@@ -265,9 +266,9 @@ class Link(SpanToken):
             yield Particle(dest_part, token, "dest_part")
             if token.title:
                 yield from (
-                    Particle(" ", token),
+                    Particle(" ", token, wordwrap=True),
                     Particle(token.title_delimiter, token),
-                    Particle(token.title, token, "title"),
+                    Particle(token.title, token, "title", wordwrap=True),
                     Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token)
                 )
             yield Particle(")", token)
@@ -275,7 +276,7 @@ class Link(SpanToken):
             # "![" description "][" label "]"
             yield from (
                 Particle("[", token),
-                Particle(token.label, token, "label"),
+                Particle(token.label, token, "label", wordwrap=True),
                 Particle("]", token)
             )
         elif token.dest_type == "collapsed":
@@ -354,7 +355,7 @@ class LineBreak(SpanToken):
         self.soft = not self.marker.startswith(('  ', '\\'))
 
     def flatten(self) -> Iterable[Particle]:
-        yield Particle(self.marker + "\n", self)
+        yield Particle(self.marker + "\n", self, wordwrap=self.soft)
 
 
 class RawText(SpanToken):
@@ -369,7 +370,7 @@ class RawText(SpanToken):
         self.content = content
 
     def flatten(self) -> Iterable[Particle]:
-        yield Particle(self.content, self)
+        yield Particle(self.content, self, wordwrap=True)
 
 
 _tags = {'address', 'article', 'aside', 'base', 'basefont', 'blockquote',

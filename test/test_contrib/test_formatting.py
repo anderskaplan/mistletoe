@@ -97,7 +97,7 @@ class TestFormatting(unittest.TestCase):
                 ]
             )
 
-            # when reflowing with the max line length set normal long
+            # when reflowing with the max line length set to normal
             lines = renderer.render(paragraph, max_line_length=80)
 
             # then the content is reflowed with hard line breaks preserved
@@ -177,7 +177,7 @@ class TestFormatting(unittest.TestCase):
                 ]
             )
 
-            # when reflowing with the max line length set short
+            # when reflowing with the max line length set medium long
             lines = renderer.render(document, max_line_length=30)
 
             # then the content is reflowed accordingly
@@ -186,7 +186,7 @@ class TestFormatting(unittest.TestCase):
                 "<a long, non-breakable link reference>\n"
                 "'title (with parens). new\n"
                 "lines allowed.'\n"
-                "[*]:url 'Another link\n"
+                "[*]: url 'Another link\n"
                 "reference definition'\n"
             )
 

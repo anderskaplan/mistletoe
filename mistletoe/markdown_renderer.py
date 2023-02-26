@@ -56,15 +56,15 @@ class LinkReferenceDefinition(span_token.SpanToken):
     def flatten(self) -> Iterable[span_token.Particle]:
         yield from (
             span_token.Particle("[", self),
-            span_token.Particle(self.label, self, "label"),
-            span_token.Particle("]: ", self),
+            span_token.Particle(self.label, self, "label", wordwrap=True),
+            span_token.Particle("]: ", self, wordwrap=True),
             span_token.Particle("<" + self.dest + ">" if self.dest_type == "angle_uri" else self.dest, self),
         )
         if self.title:
             yield from (
-                span_token.Particle(" ", self),
+                span_token.Particle(" ", self, wordwrap=True),
                 span_token.Particle(self.title_delimiter, self),
-                span_token.Particle(self.title, self),
+                span_token.Particle(self.title, self, wordwrap=True),
                 span_token.Particle(')' if self.title_delimiter == '(' else self.title_delimiter, self),
             )
 
@@ -257,12 +257,7 @@ class MarkdownRenderer(BaseRenderer):
         """
         word = ""
         for particle in particles:
-            if isinstance(particle.token, span_token.InlineCode):
-                word += particle.text
-            elif isinstance(particle.token, span_token.LineBreak) and not particle.token.soft:
-                yield from (word + particle.text[:-1], "\n")
-                word = ""
-            else:
+            if particle.wordwrap:
                 first = True
                 for item in cls._whitespace.split(particle.text):
                     if first:
@@ -272,6 +267,11 @@ class MarkdownRenderer(BaseRenderer):
                         if word:
                             yield word
                         word = item
+            elif isinstance(particle.token, span_token.LineBreak) and not particle.token.soft:
+                yield from (word + particle.text[:-1], "\n")
+                word = ""
+            else:
+                word += particle.text
 
         if word:
             yield word
