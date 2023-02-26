@@ -106,26 +106,23 @@ class MarkdownRenderer(BaseRenderer):
         return "".join(chain.from_iterable(zip(lines, repeat("\n"))))
 
     def render_heading(self, token: block_token.Heading) -> Iterable[str]:
-        # always a single line
         items = ["#" * token.level]
-        content = next(self.span_to_lines(token.children), "")
-        if content:
-            items.append(content)
+        text = next(self.span_to_lines(token.children), "")  # always a single line
+        if text:
+            items.append(text)
         if token.closing_sequence:
             items.append(token.closing_sequence)
         return [" ".join(items)]
 
     def render_setext_heading(self, token: block_token.SetextHeading) -> Iterable[str]:
-        content = list(self.span_to_lines(token.children))
+        lines = list(self.span_to_lines(token.children))
         underline_char = "=" if token.level == 1 else "-"
-        content.append(underline_char * token.underline_length)
-        return content
+        lines.append(underline_char * token.underline_length)
+        return lines
 
     def render_quote(self, token: block_token.Quote) -> Iterable[str]:
         lines = list(self.block_to_lines(token.children))
-        if not lines:
-            lines = [""]
-        return self.prefix_lines(lines, "> ")
+        return self.prefix_lines(lines or [""], "> ")
 
     def render_paragraph(self, token: block_token.Paragraph) -> Iterable[str]:
         return self.span_to_lines(token.children)
@@ -145,9 +142,7 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_list_item(self, token: block_token.ListItem) -> Iterable[str]:
         lines = list(self.block_to_lines(token.children))
-        if not lines:
-            lines = [""]
-        return self.prefix_lines(lines, token.leader + " ", " " * (len(token.leader) + 1))
+        return self.prefix_lines(lines or [""], token.leader + " ", " " * (len(token.leader) + 1))
 
     def render_table(self, token: block_token.Table) -> Iterable[str]:
         # note: column widths are not preserved; they are automatically adjusted to fit the contents.
@@ -166,8 +161,10 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_link_reference_definition_block(self, token: LinkReferenceDefinitionBlock) -> Iterable[str]:
         # each link reference definition starts on a new line
+        lines = []
         for child in token.children:
-            yield from self.span_to_lines([child])
+            lines.extend(self.span_to_lines([child]))
+        return lines
 
     def render_blank_line(self, token: BlankLine) -> Iterable[str]:
         return [""]
