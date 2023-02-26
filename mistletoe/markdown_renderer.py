@@ -57,11 +57,11 @@ class LinkReferenceDefinition(block_token.BlockToken):
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
     """
-    A sequence of "link reference definitions".
+    A sequence of link reference definitions.
     This is a container block token. Its children are link reference definition tokens.
 
-    This class inherits from Footnote and modifies the behavior of the constructor, so
-    that the tokens are retained in the AST.
+    This class inherits from Footnote and modifies the behavior of the constructor,
+    to keep the tokens in the AST.
     """
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -189,16 +189,16 @@ class MarkdownRenderer(BaseRenderer):
         """
         current_line = []
         for token in tokens:
-            for str in token.flatten():
-                if "\n" in str:
-                    lines = str.split("\n")
+            for particle in token.flatten():
+                if "\n" in particle.text:
+                    lines = particle.text.split("\n")
                     current_line.append(lines[0])
                     yield "".join(current_line)
                     for inner_line in lines[1:-2]:
                         yield inner_line
                     current_line = [lines[-1]]
                 else:
-                    current_line.append(str)
+                    current_line.append(particle.text)
         if len(current_line) > 0:
             yield "".join(current_line)
 

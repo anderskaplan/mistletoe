@@ -206,18 +206,28 @@ class TestHTMLSpan(unittest.TestCase):
 
 
 class TestFlattening(unittest.TestCase):
+    @classmethod
+    def get_flattened_text(cls, token: span_token.SpanToken) -> list[str]:
+        flattened = token.flatten()
+        return list(map(lambda p: p.text, flattened))
+
     def test_raw_text(self):
         text = 'some text'
         token = span_token.RawText(text)
-        flattened = list(token.flatten())
+        flattened = self.get_flattened_text(token)
         self.assertEqual(flattened, [text])
 
     def test_emphasis(self):
         token, = span_token.tokenize_inner('*some text*')
-        flattened = list(token.flatten())
+        flattened = self.get_flattened_text(token)
         self.assertEqual(flattened, ['*', 'some text', '*'])
 
     def test_nested_emphasis(self):
         token, = span_token.tokenize_inner('*some _nested_ text*')
-        flattened = list(token.flatten())
+        flattened = self.get_flattened_text(token)
         self.assertEqual(flattened, ['*', 'some ', '_', 'nested', '_', ' text', '*'])
+
+    def test_inline_code(self):
+        token, = span_token.tokenize_inner('``inline code\nwith newline``')
+        flattened = self.get_flattened_text(token)
+        self.assertEqual(flattened, ['``', 'inline code\nwith newline', '``'])

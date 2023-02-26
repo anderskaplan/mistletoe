@@ -62,6 +62,13 @@ def reset_tokens():
     _token_types = [globals()[cls_name] for cls_name in __all__]
 
 
+class Particle:
+    def __init__(self, text: str, token: 'SpanToken', tag: str = None):
+        self.text = text
+        self.token = token
+        self.tag = tag
+
+
 class SpanToken(token.Token):
     parse_inner = True
     parse_group = 1
@@ -80,15 +87,15 @@ class SpanToken(token.Token):
     def find(cls, string):
         return cls.pattern.finditer(string)
 
-    def flatten(self) -> Iterable[str]:
+    def flatten(self) -> Iterable[Particle]:
         """
-        Return a flattened string representation of the tree of span tokens rooted at this token.
+        Return a flattened representation of the tree of span tokens rooted at this token.
         Overridden in subclasses.
         """
         yield from ()
 
     @classmethod
-    def embed_span(cls, leader: str, tokens: Iterable['SpanToken'], trailer: str = None) -> Iterable[str]:
+    def embed_span(cls, leader: Particle, tokens: Iterable['SpanToken'], trailer: Particle = None) -> Iterable[Particle]:
         """
         Flatten `tokens` and embed within a leader and a trailer.
         The trailer defaults to the same as the leader.
@@ -125,8 +132,8 @@ class Strong(SpanToken):
     def __init__(self, match):
         self.delimiter = match.delimiter
 
-    def flatten(self) -> Iterable[str]:
-        return self.embed_span(self.delimiter * 2, self.children)
+    def flatten(self) -> Iterable[Particle]:
+        return self.embed_span(Particle(self.delimiter * 2, self), self.children)
 
 
 class Emphasis(SpanToken):
@@ -141,8 +148,8 @@ class Emphasis(SpanToken):
     def __init__(self, match):
         self.delimiter = match.delimiter
 
-    def flatten(self) -> Iterable[str]:
-        return self.embed_span(self.delimiter, self.children)
+    def flatten(self) -> Iterable[Particle]:
+        return self.embed_span(Particle(self.delimiter, self), self.children)
 
 
 class InlineCode(SpanToken):
@@ -172,8 +179,12 @@ class InlineCode(SpanToken):
         core_tokens._code_matches = []
         return matches
 
-    def flatten(self) -> Iterable[str]:
-        yield from (self.delimiter, self.raw_content, self.delimiter)
+    def flatten(self) -> Iterable[Particle]:
+        yield from (
+            Particle(self.delimiter, self),
+            Particle(self.raw_content, self),
+            Particle(self.delimiter, self)
+        )
 
 
 class Strikethrough(SpanToken):
@@ -183,8 +194,8 @@ class Strikethrough(SpanToken):
     """
     pattern = re.compile(r"(?<!\\)(?:\\\\)*~~(.+?)~~", re.DOTALL)
 
-    def flatten(self) -> Iterable[str]:
-        return self.embed_span('~~', self.children)
+    def flatten(self) -> Iterable[Particle]:
+        return self.embed_span(Particle('~~', self), self.children)
 
 
 class Image(SpanToken):
@@ -210,16 +221,8 @@ class Image(SpanToken):
         self.label = getattr(match, "label", None)
         self.title_delimiter = getattr(match, "title_delimiter", None)
 
-    def flatten(self) -> Iterable[str]:
-        return Link.flatten_inner(
-            self.src,
-            self.title,
-            self.dest_type,
-            self.label,
-            self.title_delimiter,
-            self.children,
-            is_image=True,
-        )
+    def flatten(self) -> Iterable[Particle]:
+        return Link.flatten_inner(self, self.src, is_image=True)
 
 class Link(SpanToken):
     """
@@ -244,40 +247,43 @@ class Link(SpanToken):
         self.label = getattr(match, "label", None)
         self.title_delimiter = getattr(match, "title_delimiter", None)
 
-    def flatten(self) -> Iterable[str]:
-        return self.flatten_inner(
-            self.target,
-            self.title,
-            self.dest_type,
-            self.label,
-            self.title_delimiter,
-            self.children
-        )
+    def flatten(self) -> Iterable[Particle]:
+        return self.flatten_inner(self, self.target)
 
     @classmethod
-    def flatten_inner(cls, target, title, dest_type, label, title_delimiter, children, is_image=False) -> Iterable[str]:
-        prefix = "![" if is_image else "["
-        if dest_type == "uri" or dest_type == "angle_uri":
-            dest_part = "".join(("<", target, ">")) if dest_type == "angle_uri" else target
-            if title:
-                # "![" description "](" dest_part " " title ")"
-                closer = ')' if title_delimiter == '(' else title_delimiter
-                return cls.embed_span(
-                    prefix,
-                    children,
-                    "]({} {}{}{})".format(dest_part, title_delimiter, title, closer))
-            else:
-                # "![" description "](" dest_part ")"
-                return cls.embed_span(prefix, children, "](" + dest_part + ")")
-        elif dest_type == "full":
+    def flatten_inner(cls, token, target, is_image=False) -> Iterable[Particle]:
+        yield from cls.embed_span(
+            Particle("![" if is_image else "[", token),
+            token.children,
+            Particle("]", token)
+        )
+        
+        if token.dest_type == "uri" or token.dest_type == "angle_uri":
+            # "![" description "](" dest_part [" " title] ")"
+            yield Particle("(", token)
+            dest_part = "".join(("<", target, ">")) if token.dest_type == "angle_uri" else target
+            yield Particle(dest_part, token, "dest_part")
+            if token.title:
+                yield from (
+                    Particle(" ", token),
+                    Particle(token.title_delimiter, token),
+                    Particle(token.title, token, "title"),
+                    Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token)
+                )
+            yield Particle(")", token)
+        elif token.dest_type == "full":
             # "![" description "][" label "]"
-            return cls.embed_span(prefix, children, "][" + label + "]")
-        elif dest_type == "collapsed":
+            yield from (
+                Particle("[", token),
+                Particle(token.label, token, "label"),
+                Particle("]", token)
+            )
+        elif token.dest_type == "collapsed":
             # "![" description "][]"
-            return cls.embed_span(prefix, children, "][]")
+            yield Particle("[]", token)
         else:
             # "![" description "]"
-            return cls.embed_span(prefix, children, "]")
+            pass
 
 
 class AutoLink(SpanToken):
@@ -300,8 +306,8 @@ class AutoLink(SpanToken):
         self.target = content
         self.mailto = '@' in self.target and 'mailto' not in self.target.casefold()
 
-    def flatten(self) -> Iterable[str]:
-        return self.embed_span("<", self.children, ">")
+    def flatten(self) -> Iterable[Particle]:
+        yield Particle("<" + self.children[0].content + ">", self)
 
 
 class EscapeSequence(SpanToken):
@@ -319,12 +325,12 @@ class EscapeSequence(SpanToken):
     def __init__(self, match):
         self.children = (RawText(match.group(self.parse_group)),)
 
+    def flatten(self) -> Iterable[Particle]:
+        yield Particle("\\" + self.children[0].content, self)
+
     @classmethod
     def strip(cls, string):
         return html.unescape(cls.pattern.sub(r'\1', string))
-
-    def flatten(self) -> Iterable[str]:
-        yield "\\" + self.children[0].content
 
 
 class LineBreak(SpanToken):
@@ -347,8 +353,8 @@ class LineBreak(SpanToken):
         self.marker = match.group(1)
         self.soft = not self.marker.startswith(('  ', '\\'))
 
-    def flatten(self) -> Iterable[str]:
-        yield self.marker + "\n"
+    def flatten(self) -> Iterable[Particle]:
+        yield Particle(self.marker + "\n", self)
 
 
 class RawText(SpanToken):
@@ -362,8 +368,8 @@ class RawText(SpanToken):
     def __init__(self, content):
         self.content = content
 
-    def flatten(self) -> Iterable[str]:
-        yield self.content
+    def flatten(self) -> Iterable[Particle]:
+        yield Particle(self.content, self)
 
 
 _tags = {'address', 'article', 'aside', 'base', 'basefont', 'blockquote',
@@ -401,8 +407,8 @@ class HTMLSpan(SpanToken):
     parse_inner = False
     parse_group = 0
 
-    def flatten(self) -> Iterable[str]:
-        yield self.content
+    def flatten(self) -> Iterable[Particle]:
+        yield Particle(self.content, self)
 
 
 # Note: The following XWiki tokens are based on the XWiki Syntax 2.0 (or above; 1.0 was deprecated years ago already).
