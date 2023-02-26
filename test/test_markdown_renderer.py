@@ -1,4 +1,5 @@
 from unittest import TestCase
+from mistletoe import block_token, span_token
 
 from mistletoe.markdown_renderer import MarkdownRenderer
 from mistletoe.block_token import Document
@@ -7,10 +8,9 @@ from mistletoe.block_token import Document
 class TestMarkdownRenderer(TestCase):
     @staticmethod
     def roundtrip(input):
-        """Parse the given markdown input and render it back to markdown again."""
+        """Parses the given markdown input and renders it back to markdown again."""
         with MarkdownRenderer() as renderer:
-            rendered = renderer.render(Document(input))
-            return rendered
+            return renderer.render(Document(input))
 
     def test_empty_document(self):
         input = []
@@ -201,3 +201,18 @@ class TestMarkdownRenderer(TestCase):
                  '| b   | q   |\n']
         rendered = self.roundtrip(input)
         self.assertEqual(rendered, "".join(xpect))
+
+    def test_direct_rendering_of_block_token(self):
+        input = ['Line 1\n',
+                 'Line 2\n']
+        paragraph = block_token.Paragraph(input)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph)
+        assert lines == "".join(input)
+
+    def test_direct_rendering_of_span_token(self):
+        input = 'some text'
+        raw_text = span_token.RawText(input)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(raw_text)
+        assert lines == input + '\n'

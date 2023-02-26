@@ -11,7 +11,7 @@ from itertools import chain, repeat
 import sys
 from typing import Iterable, Sequence
 
-from mistletoe import block_token, span_token
+from mistletoe import block_token, span_token, token
 from mistletoe.base_renderer import BaseRenderer
 
 
@@ -90,6 +90,7 @@ class MarkdownRenderer(BaseRenderer):
     """
     Markdown renderer.
     """
+
     def __init__(self, *extras):
         block_token.remove_token(block_token.Footnote)
         super().__init__(*chain((block_token.HTMLBlock, span_token.HTMLSpan, BlankLine, LinkReferenceDefinitionBlock), extras))
@@ -97,52 +98,66 @@ class MarkdownRenderer(BaseRenderer):
         self.render_map["CodeFence"] = self.render_fenced_code_block
         self.render_map["LinkReferenceDefinition"] = self.render_link_reference_definition
 
+    def render(self, token: token.Token, max_line_length: int = None) -> str:
+        """
+        Renders the tree of tokens rooted at the given token into markdown.
+
+        If `max_line_length` is specified, the document is word wrapped to the
+        specified line length. Otherwise the formatting from the original (parsed)
+        document is retained as much as possible.
+        """
+        if isinstance(token, block_token.BlockToken):
+            lines = self.render_map[token.__class__.__name__](token)
+        else:
+            lines = self.span_to_lines([token])
+
+        return "".join(map(lambda line: line + "\n", lines))
+
     # rendering of block tokens.
     # rendered into sequences of lines (strings), to be joined by newlines.
-    # except render_document, which returns a single string containing the fully rendered document.
 
-    def render_document(self, token: block_token.Document) -> str:
-        lines = self.block_to_lines(token.children)
-        return "".join(chain.from_iterable(zip(lines, repeat("\n"))))
+    def render_document(self, token: block_token.Document) -> Iterable[str]:
+        return self.blocks_to_lines(token.children)
 
     def render_heading(self, token: block_token.Heading) -> Iterable[str]:
-        items = ["#" * token.level]
-        text = next(self.span_to_lines(token.children), "")  # always a single line
+        line = "#" * token.level
+        text = next(self.span_to_lines(token.children), "")  # multi-line atx headings are not allowed
         if text:
-            items.append(text)
+            line += " " + text
         if token.closing_sequence:
-            items.append(token.closing_sequence)
-        return [" ".join(items)]
+            line += " " + token.closing_sequence
+        return [line]
 
     def render_setext_heading(self, token: block_token.SetextHeading) -> Iterable[str]:
-        lines = list(self.span_to_lines(token.children))
+        yield from self.span_to_lines(token.children)
         underline_char = "=" if token.level == 1 else "-"
-        lines.append(underline_char * token.underline_length)
-        return lines
+        yield underline_char * token.underline_length
 
     def render_quote(self, token: block_token.Quote) -> Iterable[str]:
-        lines = list(self.block_to_lines(token.children))
+        lines = self.blocks_to_lines(token.children)
         return self.prefix_lines(lines or [""], "> ")
 
     def render_paragraph(self, token: block_token.Paragraph) -> Iterable[str]:
         return self.span_to_lines(token.children)
 
     def render_block_code(self, token: block_token.BlockCode) -> Iterable[str]:
+        # TODO use content property
         lines = token.children[0].content[:-1].split("\n")
         return self.prefix_lines(lines, "    ")
 
     def render_fenced_code_block(self, token: block_token.BlockCode) -> Iterable[str]:
-        lines = ["".join((token.delimiter, token.info_string))]
-        lines.extend(token.children[0].content[:-1].split("\n"))
-        lines.append(token.delimiter)
-        return self.prefix_lines(lines, " " * token.indentation)
+        # TODO use content property
+        indentation = " " * token.indentation
+        yield indentation + token.delimiter + token.info_string
+        yield from self.prefix_lines(token.children[0].content[:-1].split("\n"), indentation)
+        yield indentation + token.delimiter
 
     def render_list(self, token: block_token.List) -> Iterable[str]:
-        return self.block_to_lines(token.children)
+        return self.blocks_to_lines(token.children)
 
     def render_list_item(self, token: block_token.ListItem) -> Iterable[str]:
-        lines = list(self.block_to_lines(token.children))
-        return self.prefix_lines(lines or [""], token.leader + " ", " " * (len(token.leader) + 1))
+        lines = self.blocks_to_lines(token.children)
+        return self.prefix_lines(list(lines) or [""], token.leader + " ", " " * (len(token.leader) + 1))
 
     def render_table(self, token: block_token.Table) -> Iterable[str]:
         # note: column widths are not preserved; they are automatically adjusted to fit the contents.
@@ -156,15 +171,12 @@ class MarkdownRenderer(BaseRenderer):
         return [token.line]
 
     def render_html_block(self, token: block_token.HTMLBlock) -> Iterable[str]:
-        lines = token.content.split("\n")
-        return lines
+        return token.content.split("\n")
 
     def render_link_reference_definition_block(self, token: LinkReferenceDefinitionBlock) -> Iterable[str]:
         # each link reference definition starts on a new line
-        lines = []
         for child in token.children:
-            lines.extend(self.span_to_lines([child]))
-        return lines
+            yield from self.span_to_lines([child])
 
     def render_blank_line(self, token: BlankLine) -> Iterable[str]:
         return [""]
@@ -173,23 +185,24 @@ class MarkdownRenderer(BaseRenderer):
     # note: not used -- all rendering of span tokens is done in span_to_lines.
 
     def render_html_span(self, token: span_token.HTMLSpan) -> Sequence:
-        return self.render_inner(token)
+        raise NotImplementedError()
 
     def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[str]:
-        return self.render_inner(token)
+        raise NotImplementedError()
 
     # helper methods
 
-    def block_to_lines(self, tokens: Iterable[block_token.BlockToken]) -> Iterable[str]:
+    def blocks_to_lines(self, tokens: Iterable[block_token.BlockToken]) -> Iterable[str]:
         """
-        Render a sequence of block tokens into a sequence of lines.
+        Renders a sequence of block tokens into a sequence of lines.
         """
-        return chain.from_iterable(map(self.render, tokens))
+        for token in tokens:
+            yield from self.render_map[token.__class__.__name__](token)
 
     @classmethod
     def span_to_lines(cls, tokens: Iterable[span_token.SpanToken]) -> Iterable[str]:
         """
-        Render a sequence of span (inline) tokens into a sequence of lines.
+        Renders a sequence of span (inline) tokens into a sequence of lines.
         """
         current_line = []
         for token in tokens:

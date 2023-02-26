@@ -1,6 +1,6 @@
 import unittest
-from mistletoe.contrib.formatting import wordwrap
 from mistletoe import block_token
+from mistletoe.markdown_renderer import MarkdownRenderer
 
 
 class TestFormatting(unittest.TestCase):
@@ -16,8 +16,9 @@ class TestFormatting(unittest.TestCase):
             ]
         )
 
-        # when reflowing with the max line length set medium high
-        lines = wordwrap(paragraph, max_line_length=30)
+        # when reflowing with the max line length set to 30
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=30)
 
         # then the content is reflowed accordingly
         assert lines == (
@@ -27,7 +28,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set lower than the longest word: "paragraph", 9 chars
-        lines = wordwrap(paragraph, max_line_length=8)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=8)
 
         # then the content is reflowed so that the max line length is only exceeded for long words
         assert lines == (
@@ -50,7 +52,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set very short
-        lines = wordwrap(paragraph, max_line_length=1)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=1)
 
         # then the content is reflowed to make the lines as short as possible (but not shorter).
         assert lines == (
@@ -71,7 +74,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set very short
-        lines = wordwrap(paragraph, max_line_length=1)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=1)
 
         # then the content is reflowed to make the lines as short as possible (but not shorter),
         # and the formatting of the inline code is preserved.
@@ -94,7 +98,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set medium high
-        lines = wordwrap(paragraph, max_line_length=80)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=80)
 
         # then the content is reflowed with hard line breaks preserved
         assert lines == (
@@ -115,7 +120,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set very short
-        lines = wordwrap(paragraph, max_line_length=1)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(paragraph, max_line_length=1)
 
         # then the content is reflowed to make the lines as short as possible (but not shorter)
         assert lines == (
@@ -148,7 +154,8 @@ class TestFormatting(unittest.TestCase):
         )
 
         # when reflowing with the max line length set medium high
-        lines = wordwrap(document, max_line_length=30)
+        with MarkdownRenderer() as renderer:
+            lines = renderer.render(document, max_line_length=30)
 
         # then the content is reflowed accordingly
         assert lines == (

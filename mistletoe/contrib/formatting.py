@@ -9,7 +9,7 @@ _whitespace = re.compile(r"\s+")
 def wordwrap(token: block_token.BlockToken, max_line_length: int = 80) -> str:
     # TODO
     # iterate over the tree of block tokens
-    # Paragraphs and SetextHeading are the only tokens with wrappable content
+    # Paragraphs and SetextHeading and LinkReferenceDefinitionBlock are the only tokens with wrappable content
     # other blocks are just rendered as they are
     lines = _wrap(token.children, max_line_length=max_line_length)
     return "".join(lines)
