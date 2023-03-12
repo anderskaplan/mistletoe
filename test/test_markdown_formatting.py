@@ -1,9 +1,10 @@
 import unittest
+
 from mistletoe import block_token
 from mistletoe.markdown_renderer import MarkdownRenderer
 
 
-class TestFormatting(unittest.TestCase):
+class TestMarkdownFormatting(unittest.TestCase):
     def test_wordwrap_plain_paragraph(self):
         with MarkdownRenderer() as renderer:
             # given a paragraph with only plain text and soft line breaks
@@ -46,9 +47,7 @@ class TestFormatting(unittest.TestCase):
         with MarkdownRenderer() as renderer:
             # given a paragraph with emphasized words
             paragraph = block_token.Paragraph(
-                [
-                    "*emphasized* _nested *emphasis* too_\n"
-                ]
+                ["*emphasized* _nested *emphasis* too_\n"]
             )
 
             # when reflowing with the max line length set very short
@@ -67,9 +66,9 @@ class TestFormatting(unittest.TestCase):
             # given a paragraph with inline code
             paragraph = block_token.Paragraph(
                 [
-                    "`inline code` and\n"
-                    "``inline with\n"
-                    "line break``\n"
+                    "`inline code` and\n",
+                    "``inline with\n",
+                    "line break``\n",
                 ]
             )
 
@@ -150,7 +149,7 @@ class TestFormatting(unittest.TestCase):
                     "   without any \n",
                     "long words \n",
                     "or hard line breaks.\n",
-                    "=====\n"
+                    "=====\n",
                 ]
             )
 
@@ -244,13 +243,11 @@ class TestFormatting(unittest.TestCase):
     def test_wordwrap_tables(self):
         with MarkdownRenderer() as renderer:
             # given a markdown table
-            input = (
-                [
-                    "| header |                         x |                 |\n",
-                    "| ------ | ------------------------: | --------------- |\n",
-                    "| .      | Performance improvements. | an extra column |\n",
-                ]
-            )
+            input = [
+                "| header |                         x |                 |\n",
+                "| ------ | ------------------------: | --------------- |\n",
+                "| .      | Performance improvements. | an extra column |\n",
+            ]
             document = block_token.Document(input)
 
             # when reflowing
