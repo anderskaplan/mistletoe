@@ -53,21 +53,6 @@ class LinkReferenceDefinition(span_token.SpanToken):
     def __init__(self, match):
         self.label, self.dest, self.title, self.dest_type, self.title_delimiter = match
 
-    def flatten(self) -> Iterable[span_token.Particle]:
-        yield from (
-            span_token.Particle("[", self),
-            span_token.Particle(self.label, self, "label", wordwrap=True),
-            span_token.Particle("]: ", self, wordwrap=True),
-            span_token.Particle("<" + self.dest + ">" if self.dest_type == "angle_uri" else self.dest, self),
-        )
-        if self.title:
-            yield from (
-                span_token.Particle(" ", self, wordwrap=True),
-                span_token.Particle(self.title_delimiter, self),
-                span_token.Particle(self.title, self, wordwrap=True),
-                span_token.Particle(')' if self.title_delimiter == '(' else self.title_delimiter, self),
-            )
-
 
 class LinkReferenceDefinitionBlock(block_token.Footnote):
     """
@@ -84,6 +69,14 @@ class LinkReferenceDefinitionBlock(block_token.Footnote):
 
     def __init__(self, matches):
         self.children = list(map(LinkReferenceDefinition, matches))
+
+
+class Particle:
+    def __init__(self, text: str, token: span_token.SpanToken, tag: str = None, wordwrap: bool = False):
+        self.text = text
+        self.token = token
+        self.tag = tag
+        self.wordwrap = wordwrap
 
 
 class MarkdownRenderer(BaseRenderer):
@@ -114,6 +107,61 @@ class MarkdownRenderer(BaseRenderer):
             lines = self.span_to_lines([token], max_line_length=max_line_length)
 
         return "".join(map(lambda line: line + "\n", lines))
+
+    # rendering of span/inline tokens.
+    # rendered into sequences of Particles.
+
+    def render_raw_text(self, token) -> Iterable[Particle]:
+        yield Particle(token.content, token, wordwrap=True)
+
+    def render_strong(self, token: span_token.Strong) -> Iterable[Particle]:
+        return self.embed_span(Particle(token.delimiter * 2, token), token.children)
+
+    def render_emphasis(self, token: span_token.Emphasis) -> Iterable[Particle]:
+        return self.embed_span(Particle(token.delimiter, token), token.children)
+
+    def render_inline_code(self, token: span_token.InlineCode) -> Iterable[Particle]:
+        yield from (
+            Particle(token.delimiter, token),
+            Particle(token.raw_content, token),
+            Particle(token.delimiter, token)
+        )
+
+    def render_strikethrough(self, token: span_token.Strikethrough) -> Iterable[Particle]:
+        return self.embed_span(Particle('~~', token), token.children)
+
+    def render_image(self, token: span_token.Image) -> Iterable[Particle]:
+        return self.render_link_or_image(token, token.src, is_image=True)
+
+    def render_link(self, token: span_token.Link) -> Iterable[Particle]:
+        return self.render_link_or_image(token, token.target)
+
+    def render_auto_link(self, token: span_token.AutoLink) -> Iterable[Particle]:
+        yield Particle("<" + token.children[0].content + ">", token)
+
+    def render_escape_sequence(self, token: span_token.EscapeSequence) -> Iterable[Particle]:
+        yield Particle("\\" + token.children[0].content, token)
+
+    def render_line_break(self, token: span_token.LineBreak) -> Iterable[Particle]:
+        yield Particle(token.marker + "\n", token, wordwrap=token.soft)
+
+    def render_html_span(self, token: span_token.HTMLSpan) -> Iterable[Particle]:
+        yield Particle(token.content, token)
+
+    def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[Particle]:
+        yield from (
+            Particle("[", token),
+            Particle(token.label, token, "label", wordwrap=True),
+            Particle("]: ", token, wordwrap=True),
+            Particle("<" + token.dest + ">" if token.dest_type == "angle_uri" else token.dest, token),
+        )
+        if token.title:
+            yield from (
+                Particle(" ", token, wordwrap=True),
+                Particle(token.title_delimiter, token),
+                Particle(token.title, token, wordwrap=True),
+                Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token),
+            )
 
     # rendering of block tokens.
     # rendered into sequences of lines (strings), to be joined by newlines.
@@ -187,15 +235,6 @@ class MarkdownRenderer(BaseRenderer):
     def render_blank_line(self, token: BlankLine, max_line_length: int = None) -> Iterable[str]:
         return [""]
 
-    # rendering of span/inline tokens.
-    # note: not used -- all rendering of span tokens is done in span_to_lines.
-
-    def render_html_span(self, token: span_token.HTMLSpan) -> Sequence:
-        raise NotImplementedError()
-
-    def render_link_reference_definition(self, token: LinkReferenceDefinition) -> Iterable[str]:
-        raise NotImplementedError()
-
     # helper methods
 
     def blocks_to_lines(self, tokens: Iterable[block_token.BlockToken], max_line_length: int = None) -> Iterable[str]:
@@ -205,13 +244,14 @@ class MarkdownRenderer(BaseRenderer):
         for token in tokens:
             yield from self.render_map[token.__class__.__name__](token, max_line_length=max_line_length)
 
-    @classmethod
-    def span_to_lines(cls, tokens: Iterable[span_token.SpanToken], max_line_length: int = None) -> Iterable[str]:
+    def span_to_lines(self, tokens: Iterable[span_token.SpanToken], max_line_length: int = None) -> Iterable[str]:
         """
         Renders a sequence of span (inline) tokens into a sequence of lines.
         """
+        particles = chain.from_iterable(
+            [self.render_map[token.__class__.__name__](token) for token in tokens]
+        )
         current_line = ""
-        particles = chain.from_iterable([token.flatten() for token in tokens])
         if not max_line_length:
             # plain rendering: merge all particles and split on newlines
             for particle in particles:
@@ -225,7 +265,7 @@ class MarkdownRenderer(BaseRenderer):
                     current_line += particle.text
         else:
             # render with word wrapping
-            for word in cls.make_words(particles):
+            for word in self.make_words(particles):
                 if word == "\n":
                     # hard line break
                     yield current_line
@@ -250,7 +290,7 @@ class MarkdownRenderer(BaseRenderer):
             yield current_line
 
     @classmethod
-    def make_words(cls, particles: Iterable[span_token.Particle]) -> Iterable[str]:
+    def make_words(cls, particles: Iterable[Particle]) -> Iterable[str]:
         """
         Aggregates and splits a sequence of Particles into words, which do not contain breakable spaces or line breaks.
         The exception is hard line breaks which are represented by a single newline character.
@@ -276,7 +316,6 @@ class MarkdownRenderer(BaseRenderer):
         if word:
             yield word
 
-
     @classmethod
     def prefix_lines(cls, lines: Iterable[str], first_line_prefix: str, following_line_prefix: str = None) -> Iterable[str]:
         """
@@ -293,12 +332,11 @@ class MarkdownRenderer(BaseRenderer):
                 l = following_line_prefix + line
             yield l if not l.isspace() else ""
 
-    @classmethod
-    def table_row_to_text(cls, row) -> Sequence[str]:
+    def table_row_to_text(self, row) -> Sequence[str]:
         """
         Render each table cell on a table row to text.
         """
-        return [next(cls.span_to_lines(col.children), "") for col in row.children]
+        return [next(self.span_to_lines(col.children), "") for col in row.children]
 
     @classmethod
     def calculate_table_column_widths(cls, col_text) -> Sequence[int]:
@@ -347,6 +385,50 @@ class MarkdownRenderer(BaseRenderer):
             else:
                 padded_text.append("{0: >{w}}".format(text, w=width))
         return "".join(("| ", " | ".join(padded_text), " |"))
+
+    def embed_span(self, leader: Particle, tokens: Iterable[span_token.SpanToken], trailer: Particle = None) -> Iterable[Particle]:
+        """
+        Flattens `tokens` and embeds within a leader and a trailer.
+        The trailer defaults to the same as the leader.
+        """
+        yield leader
+        for token in tokens:
+            yield from self.render_map[token.__class__.__name__](token)
+        yield trailer or leader
+
+    def render_link_or_image(self, token: span_token.SpanToken, target: str, is_image: bool=False) -> Iterable[Particle]:
+        yield from self.embed_span(
+            Particle("![" if is_image else "[", token),
+            token.children,
+            Particle("]", token)
+        )
+
+        if token.dest_type == "uri" or token.dest_type == "angle_uri":
+            # "![" description "](" dest_part [" " title] ")"
+            yield Particle("(", token)
+            dest_part = "<" + target + ">" if token.dest_type == "angle_uri" else target
+            yield Particle(dest_part, token, "dest_part")
+            if token.title:
+                yield from (
+                    Particle(" ", token, wordwrap=True),
+                    Particle(token.title_delimiter, token),
+                    Particle(token.title, token, "title", wordwrap=True),
+                    Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token)
+                )
+            yield Particle(")", token)
+        elif token.dest_type == "full":
+            # "![" description "][" label "]"
+            yield from (
+                Particle("[", token),
+                Particle(token.label, token, "label", wordwrap=True),
+                Particle("]", token)
+            )
+        elif token.dest_type == "collapsed":
+            # "![" description "][]"
+            yield Particle("[]", token)
+        else:
+            # "![" description "]"
+            pass
 
 
 def main():
