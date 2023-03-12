@@ -7,8 +7,8 @@ except for nonessential whitespace.
 
 import os
 import re
-from itertools import chain, repeat
 import sys
+from itertools import chain, repeat
 from typing import Iterable, Sequence
 
 from mistletoe import block_token, span_token, token
@@ -72,6 +72,16 @@ class LinkReferenceDefinitionBlock(block_token.Footnote):
 
 
 class Particle:
+    """
+    Markdown fragment. Used when rendering trees of span tokens into flat sequences.
+
+    Attributes:
+        text (str): markdown fragment
+        token (SpanToken): source token
+        tag (str): indicates function. Can be used e.g. to identify translatable content.
+        wordwrap (bool): indicates whether the particle may be word wrapped without
+                         changing the validity or semantic meaning of the markdown.
+    """
     def __init__(self, text: str, token: span_token.SpanToken, tag: str = None, wordwrap: bool = False):
         self.text = text
         self.token = token
@@ -121,11 +131,7 @@ class MarkdownRenderer(BaseRenderer):
         return self.embed_span(Particle(token.delimiter, token), token.children)
 
     def render_inline_code(self, token: span_token.InlineCode) -> Iterable[Particle]:
-        yield from (
-            Particle(token.delimiter, token),
-            Particle(token.raw_content, token),
-            Particle(token.delimiter, token)
-        )
+        yield Particle(token.delimiter + token.raw_content + token.delimiter, token)
 
     def render_strikethrough(self, token: span_token.Strikethrough) -> Iterable[Particle]:
         return self.embed_span(Particle('~~', token), token.children)
@@ -135,6 +141,40 @@ class MarkdownRenderer(BaseRenderer):
 
     def render_link(self, token: span_token.Link) -> Iterable[Particle]:
         return self.render_link_or_image(token, token.target)
+
+    def render_link_or_image(self, token: span_token.SpanToken, target: str, is_image: bool=False) -> Iterable[Particle]:
+        yield from self.embed_span(
+            Particle("![" if is_image else "[", token),
+            token.children,
+            Particle("]", token)
+        )
+
+        if token.dest_type == "uri" or token.dest_type == "angle_uri":
+            # "![" description "](" dest_part [" " title] ")"
+            yield Particle("(", token)
+            dest_part = "<" + target + ">" if token.dest_type == "angle_uri" else target
+            yield Particle(dest_part, token, "dest_part")
+            if token.title:
+                yield from (
+                    Particle(" ", token, wordwrap=True),
+                    Particle(token.title_delimiter, token),
+                    Particle(token.title, token, "title", wordwrap=True),
+                    Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token)
+                )
+            yield Particle(")", token)
+        elif token.dest_type == "full":
+            # "![" description "][" label "]"
+            yield from (
+                Particle("[", token),
+                Particle(token.label, token, "label", wordwrap=True),
+                Particle("]", token)
+            )
+        elif token.dest_type == "collapsed":
+            # "![" description "][]"
+            yield Particle("[]", token)
+        else:
+            # "![" description "]"
+            pass
 
     def render_auto_link(self, token: span_token.AutoLink) -> Iterable[Particle]:
         yield Particle("<" + token.children[0].content + ">", token)
@@ -159,7 +199,7 @@ class MarkdownRenderer(BaseRenderer):
             yield from (
                 Particle(" ", token, wordwrap=True),
                 Particle(token.title_delimiter, token),
-                Particle(token.title, token, wordwrap=True),
+                Particle(token.title, token, "title", wordwrap=True),
                 Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token),
             )
 
@@ -236,6 +276,16 @@ class MarkdownRenderer(BaseRenderer):
         return [""]
 
     # helper methods
+
+    def embed_span(self, leader: Particle, tokens: Iterable[span_token.SpanToken], trailer: Particle = None) -> Iterable[Particle]:
+        """
+        Flattens `tokens` and embeds within a leader and a trailer.
+        The trailer defaults to the same as the leader.
+        """
+        yield leader
+        for token in tokens:
+            yield from self.render_map[token.__class__.__name__](token)
+        yield trailer or leader
 
     def blocks_to_lines(self, tokens: Iterable[block_token.BlockToken], max_line_length: int = None) -> Iterable[str]:
         """
@@ -385,50 +435,6 @@ class MarkdownRenderer(BaseRenderer):
             else:
                 padded_text.append("{0: >{w}}".format(text, w=width))
         return "".join(("| ", " | ".join(padded_text), " |"))
-
-    def embed_span(self, leader: Particle, tokens: Iterable[span_token.SpanToken], trailer: Particle = None) -> Iterable[Particle]:
-        """
-        Flattens `tokens` and embeds within a leader and a trailer.
-        The trailer defaults to the same as the leader.
-        """
-        yield leader
-        for token in tokens:
-            yield from self.render_map[token.__class__.__name__](token)
-        yield trailer or leader
-
-    def render_link_or_image(self, token: span_token.SpanToken, target: str, is_image: bool=False) -> Iterable[Particle]:
-        yield from self.embed_span(
-            Particle("![" if is_image else "[", token),
-            token.children,
-            Particle("]", token)
-        )
-
-        if token.dest_type == "uri" or token.dest_type == "angle_uri":
-            # "![" description "](" dest_part [" " title] ")"
-            yield Particle("(", token)
-            dest_part = "<" + target + ">" if token.dest_type == "angle_uri" else target
-            yield Particle(dest_part, token, "dest_part")
-            if token.title:
-                yield from (
-                    Particle(" ", token, wordwrap=True),
-                    Particle(token.title_delimiter, token),
-                    Particle(token.title, token, "title", wordwrap=True),
-                    Particle(')' if token.title_delimiter == '(' else token.title_delimiter, token)
-                )
-            yield Particle(")", token)
-        elif token.dest_type == "full":
-            # "![" description "][" label "]"
-            yield from (
-                Particle("[", token),
-                Particle(token.label, token, "label", wordwrap=True),
-                Particle("]", token)
-            )
-        elif token.dest_type == "collapsed":
-            # "![" description "][]"
-            yield Particle("[]", token)
-        else:
-            # "![" description "]"
-            pass
 
 
 def main():

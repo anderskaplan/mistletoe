@@ -1,8 +1,8 @@
 from unittest import TestCase
-from mistletoe import block_token, span_token
 
-from mistletoe.markdown_renderer import MarkdownRenderer
+from mistletoe import block_token, span_token
 from mistletoe.block_token import Document
+from mistletoe.markdown_renderer import MarkdownRenderer
 
 
 class TestMarkdownRenderer(TestCase):
