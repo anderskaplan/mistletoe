@@ -163,22 +163,21 @@ class MarkdownRenderer(BaseRenderer):
         return self.embed_span(Particle("~~", token), token.children)
 
     def render_image(self, token: span_token.Image) -> Iterable[Particle]:
-        return self.render_link_or_image(token, token.src, is_image=True)
+        yield Particle("!", token)
+        yield from self.render_link_or_image(token, token.src)
 
     def render_link(self, token: span_token.Link) -> Iterable[Particle]:
         return self.render_link_or_image(token, token.target)
 
-    def render_link_or_image(
-        self, token: span_token.SpanToken, target: str, is_image: bool = False
-    ) -> Iterable[Particle]:
+    def render_link_or_image(self, token: span_token.SpanToken, target: str) -> Iterable[Particle]:
         yield from self.embed_span(
-            Particle("![" if is_image else "[", token),
+            Particle("[", token),
             token.children,
             Particle("]", token),
         )
 
         if token.dest_type == "uri" or token.dest_type == "angle_uri":
-            # "![" description "](" dest_part [" " title] ")"
+            # "[" description "](" dest_part [" " title] ")"
             yield Particle("(", token)
             dest_part = "<" + target + ">" if token.dest_type == "angle_uri" else target
             yield Particle(dest_part, token, "dest_part")
@@ -194,17 +193,17 @@ class MarkdownRenderer(BaseRenderer):
                 )
             yield Particle(")", token)
         elif token.dest_type == "full":
-            # "![" description "][" label "]"
+            # "[" description "][" label "]"
             yield from (
                 Particle("[", token),
                 Particle(token.label, token, "label", wordwrap=True),
                 Particle("]", token),
             )
         elif token.dest_type == "collapsed":
-            # "![" description "][]"
+            # "[" description "][]"
             yield Particle("[]", token)
         else:
-            # "![" description "]"
+            # "[" description "]"
             pass
 
     def render_auto_link(self, token: span_token.AutoLink) -> Iterable[Particle]:
@@ -368,12 +367,11 @@ class MarkdownRenderer(BaseRenderer):
         trailer: Particle = None,
     ) -> Iterable[Particle]:
         """
-        Flattens `tokens` and embeds within a leader and a trailer.
+        Makes particles from `tokens` and embeds within a leader and a trailer.
         The trailer defaults to the same as the leader.
         """
         yield leader
-        for token in tokens:
-            yield from self.render_map[token.__class__.__name__](token)
+        yield from self.make_particles(tokens)
         yield trailer or leader
 
     def blocks_to_lines(
@@ -393,9 +391,17 @@ class MarkdownRenderer(BaseRenderer):
         """
         Renders a sequence of span (inline) tokens into a sequence of lines.
         """
-        particles = chain.from_iterable(
+        particles = self.make_particles(tokens)
+        return self.particles_to_lines(particles, max_line_length=max_line_length)
+
+    def make_particles(self, tokens: Iterable[span_token.SpanToken]):
+        return chain.from_iterable(
             [self.render_map[token.__class__.__name__](token) for token in tokens]
         )
+
+    def particles_to_lines(
+        self, particles: Iterable[Particle], max_line_length: int = None
+    ) -> Iterable[str]:
         current_line = ""
         if not max_line_length:
             # plain rendering: merge all particles and split on newlines
